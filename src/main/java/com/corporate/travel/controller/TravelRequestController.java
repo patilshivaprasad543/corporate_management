@@ -3,6 +3,7 @@ package com.corporate.travel.controller;
 import com.corporate.travel.common.ApiResponse;
 import com.corporate.travel.dto.TravelRequestDto;
 import com.corporate.travel.security.UserPrincipal;
+import com.corporate.travel.security.AuthenticatedUser;
 import com.corporate.travel.service.TravelRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,7 +30,7 @@ public class TravelRequestController {
     public ResponseEntity<ApiResponse<TravelRequestDto.Response>> createRequest(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody TravelRequestDto.CreateRequest request) {
-        Long userId = principal != null ? principal.getId() : 5L; // fallback to employee demo id
+        Long userId = AuthenticatedUser.requireId(principal);
         return ResponseEntity.ok(ApiResponse.ok(travelRequestService.createRequest(userId, request), "Travel request submitted"));
     }
 
@@ -37,7 +38,7 @@ public class TravelRequestController {
     @Operation(summary = "List current user's travel requests")
     public ResponseEntity<ApiResponse<List<TravelRequestDto.Response>>> getMyRequests(
             @AuthenticationPrincipal UserPrincipal principal) {
-        Long userId = principal != null ? principal.getId() : 5L;
+        Long userId = AuthenticatedUser.requireId(principal);
         return ResponseEntity.ok(ApiResponse.ok(travelRequestService.getMyRequests(userId), "User requests retrieved"));
     }
 

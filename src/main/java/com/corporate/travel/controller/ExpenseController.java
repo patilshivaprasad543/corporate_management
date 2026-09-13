@@ -3,6 +3,7 @@ package com.corporate.travel.controller;
 import com.corporate.travel.common.ApiResponse;
 import com.corporate.travel.dto.ExpenseDto;
 import com.corporate.travel.security.UserPrincipal;
+import com.corporate.travel.security.AuthenticatedUser;
 import com.corporate.travel.service.ExpenseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,7 +31,7 @@ public class ExpenseController {
     public ResponseEntity<ApiResponse<ExpenseDto.ReportResponse>> createReport(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody ExpenseDto.CreateReportRequest request) {
-        Long userId = principal != null ? principal.getId() : 5L;
+        Long userId = AuthenticatedUser.requireId(principal);
         return ResponseEntity.ok(ApiResponse.ok(expenseService.createExpenseReport(userId, request), "Expense report submitted"));
     }
 
@@ -47,7 +48,7 @@ public class ExpenseController {
     public ResponseEntity<ApiResponse<ExpenseDto.ReportResponse>> approveReport(
             @PathVariable("reportId") Long reportId,
             @AuthenticationPrincipal UserPrincipal principal) {
-        Long financeId = principal != null ? principal.getId() : 6L;
+        Long financeId = AuthenticatedUser.requireId(principal);
         return ResponseEntity.ok(ApiResponse.ok(expenseService.approveExpenseReport(reportId, financeId, true), "Expense approved and reimbursed"));
     }
 
@@ -56,7 +57,7 @@ public class ExpenseController {
     public ResponseEntity<ApiResponse<ExpenseDto.ReportResponse>> rejectReport(
             @PathVariable("reportId") Long reportId,
             @AuthenticationPrincipal UserPrincipal principal) {
-        Long financeId = principal != null ? principal.getId() : 6L;
+        Long financeId = AuthenticatedUser.requireId(principal);
         return ResponseEntity.ok(ApiResponse.ok(expenseService.approveExpenseReport(reportId, financeId, false), "Expense rejected"));
     }
 
@@ -64,7 +65,7 @@ public class ExpenseController {
     @Operation(summary = "List current user's expense reports")
     public ResponseEntity<ApiResponse<List<ExpenseDto.ReportResponse>>> getMyReports(
             @AuthenticationPrincipal UserPrincipal principal) {
-        Long userId = principal != null ? principal.getId() : 5L;
+        Long userId = AuthenticatedUser.requireId(principal);
         return ResponseEntity.ok(ApiResponse.ok(expenseService.getMyReports(userId), "User reports retrieved"));
     }
 

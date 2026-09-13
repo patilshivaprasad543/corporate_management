@@ -53,21 +53,16 @@ public class SecurityConfig {
                     "/favicon.ico",
                     "/static/**",
                     "/assets/**",
-                    "/h2-console/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/api-docs/**",
-                    "/ws/**",
                     "/api/auth/**",
-                    "/api/seed/**",
-                    "/actuator/**"
+                    "/actuator/health"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/search/**").permitAll()
+                .requestMatchers("/api/approvals/**").hasAnyAuthority("ROLE_APPROVER", "ROLE_FINANCE", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN")
+                .requestMatchers("/api/expenses/*/approve", "/api/expenses/*/reject").hasAnyAuthority("ROLE_APPROVER", "ROLE_FINANCE", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN")
                 .requestMatchers("/api/admin/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN", "ROLE_HR")
-                .requestMatchers("/api/travel/requests/pending-approvals", "/api/travel/requests/*/approve", "/api/travel/requests/*/reject")
-                    .hasAnyAuthority("ROLE_APPROVER", "ROLE_TRAVEL_MANAGER", "ROLE_FINANCE", "ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN")
-                .requestMatchers("/api/expenses/pending-approvals", "/api/expenses/*/approve", "/api/expenses/*/reject")
-                    .hasAnyAuthority("ROLE_APPROVER", "ROLE_FINANCE", "ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN")
                 .requestMatchers("/api/analytics/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN", "ROLE_APPROVER", "ROLE_FINANCE", "ROLE_TRAVEL_MANAGER", "ROLE_EMPLOYEE", "ROLE_FINANCE_APPROVER", "ROLE_DEPARTMENT_HEAD", "ROLE_AUDITOR")
                 .requestMatchers("/api/audit/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN", "ROLE_FINANCE")
                 .requestMatchers("/api/risk/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN", "ROLE_TRAVEL_MANAGER", "ROLE_APPROVER", "ROLE_EMPLOYEE")

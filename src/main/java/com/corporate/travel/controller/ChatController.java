@@ -4,6 +4,7 @@ import com.corporate.travel.common.ApiResponse;
 import com.corporate.travel.entity.ChatConversation;
 import com.corporate.travel.entity.ChatMessage;
 import com.corporate.travel.security.UserPrincipal;
+import com.corporate.travel.security.AuthenticatedUser;
 import com.corporate.travel.service.ChatService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,7 +30,7 @@ public class ChatController {
     public ResponseEntity<ApiResponse<ChatConversation>> getConversation(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(name = "type", required = false, defaultValue = "SUPPORT") String type) {
-        Long userId = principal != null ? principal.getId() : 5L;
+        Long userId = AuthenticatedUser.requireId(principal);
         return ResponseEntity.ok(ApiResponse.ok(chatService.getOrCreateConversation(userId, type), "Conversation retrieved"));
     }
 
@@ -40,7 +41,7 @@ public class ChatController {
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(name = "senderType", required = false, defaultValue = "USER") String senderType,
             @RequestBody String message) {
-        Long senderId = principal != null ? principal.getId() : 5L;
+        Long senderId = AuthenticatedUser.requireId(principal);
         return ResponseEntity.ok(ApiResponse.ok(chatService.sendMessage(roomId, senderId, senderType, message), "Message sent"));
     }
 

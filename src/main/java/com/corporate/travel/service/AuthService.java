@@ -91,12 +91,10 @@ public class AuthService {
             throw new BadRequestException("Email is already registered");
         }
 
+        // Public registration may only create a traveler. Elevated roles are
+        // provisioned by an organization administrator through a controlled
+        // user-management workflow.
         RoleType roleType = RoleType.ROLE_EMPLOYEE;
-        if (request.getRole() != null) {
-            try {
-                roleType = RoleType.valueOf(request.getRole().startsWith("ROLE_") ? request.getRole() : "ROLE_" + request.getRole());
-            } catch (Exception ignored) {}
-        }
 
         Role userRole = roleRepository.findByName(roleType)
                 .orElseGet(() -> roleRepository.save(Role.builder().name(RoleType.ROLE_EMPLOYEE).description("Employee").build()));
@@ -119,7 +117,7 @@ public class AuthService {
                 .roles(new HashSet<>(Collections.singletonList(userRole)))
                 .organization(org)
                 .active(true)
-                .emailVerified(true)
+                .emailVerified(false)
                 .build();
 
         User savedUser = userRepository.save(user);

@@ -3,6 +3,7 @@ package com.corporate.travel.controller;
 import com.corporate.travel.common.ApiResponse;
 import com.corporate.travel.dto.BookingDto;
 import com.corporate.travel.security.UserPrincipal;
+import com.corporate.travel.security.AuthenticatedUser;
 import com.corporate.travel.service.BookingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,7 +30,7 @@ public class BookingController {
     public ResponseEntity<ApiResponse<BookingDto.Response>> createBooking(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody BookingDto.CreateBookingRequest request) {
-        Long userId = principal != null ? principal.getId() : 5L;
+        Long userId = AuthenticatedUser.requireId(principal);
         return ResponseEntity.ok(ApiResponse.ok(bookingService.createBooking(userId, request), "Booking confirmed successfully"));
     }
 
@@ -37,7 +38,7 @@ public class BookingController {
     @Operation(summary = "List all bookings for current user")
     public ResponseEntity<ApiResponse<List<BookingDto.Response>>> getMyBookings(
             @AuthenticationPrincipal UserPrincipal principal) {
-        Long userId = principal != null ? principal.getId() : 5L;
+        Long userId = AuthenticatedUser.requireId(principal);
         return ResponseEntity.ok(ApiResponse.ok(bookingService.getMyBookings(userId), "User bookings retrieved"));
     }
 

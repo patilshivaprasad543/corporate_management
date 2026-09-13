@@ -16,6 +16,7 @@ import com.corporate.travel.repository.TravelRequestRepository;
 import com.corporate.travel.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,7 +45,8 @@ public class ApprovalWorkflowService {
         TravelRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException("TravelRequest", "id", requestId));
 
-        User approver = userRepository.findById(approverUserId).orElse(null);
+        User approver = userRepository.findById(approverUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", approverUserId));
 
         List<ApprovalStep> steps = approvalStepRepository.findByTravelRequestIdOrderByStepOrderAsc(requestId);
 
@@ -54,13 +56,21 @@ public class ApprovalWorkflowService {
                 .findFirst()
                 .orElse(null);
 
-        if (currentStep != null) {
-            currentStep.setStatus(status);
-            currentStep.setApprover(approver);
-            currentStep.setComments(comments);
-            currentStep.setActionTimestamp(LocalDateTime.now());
-            approvalStepRepository.save(currentStep);
+        if (currentStep == null) {
+            throw new IllegalStateException("There is no pending approval step for this travel request");
         }
+
+        boolean hasRequiredRole = approver.getRoles().stream()
+                .anyMatch(role -> currentStep.getApproverRole().equals(role.getName().name()));
+        if (!hasRequiredRole) {
+            throw new AccessDeniedException("You are not assigned to the current approval step");
+        }
+
+        currentStep.setStatus(status);
+        currentStep.setApprover(approver);
+        currentStep.setComments(comments);
+        currentStep.setActionTimestamp(LocalDateTime.now());
+        approvalStepRepository.save(currentStep);
 
         if (status == ApprovalStatus.REJECTED) {
             request.setStatus(RequestStatus.REJECTED);

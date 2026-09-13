@@ -1,6 +1,6 @@
 # CorporateTravel360 — Enterprise Business Travel & Expense Platform
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+[![Build Status](https://img.shields.io/badge/build-local-blue.svg)]()
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-blue.svg)]()
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)]()
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-blue.svg)]()
@@ -65,7 +65,7 @@
 ./gradlew.bat compileJava test bootJar
 java -jar build/libs/corporate_management-1.0.0.jar
 ```
-Open **`http://localhost:8080`** in your browser.
+Open **`http://localhost:8080`** in your browser. The default local profile uses an in-memory H2 database; provide the MySQL environment values in `.env.example` for a persistent deployment.
 
 ### 2. Run via Docker Compose
 ```bash
@@ -84,8 +84,9 @@ Interactive Swagger API documentation is available at:
 
 ## Verification & Automated Testing
 
-Run the full end-to-end automated verification suite:
+Run the automated verification suite:
 ```bash
-python scratch/verify_all_modules.py
+./gradlew.bat test
 ```
-Outputs 18/18 modules passing with 100% success rate.
+
+The project includes controller, service, policy, authentication, analytics, AI, and workflow integration tests.

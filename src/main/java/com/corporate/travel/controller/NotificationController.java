@@ -3,6 +3,7 @@ package com.corporate.travel.controller;
 import com.corporate.travel.common.ApiResponse;
 import com.corporate.travel.entity.Notification;
 import com.corporate.travel.security.UserPrincipal;
+import com.corporate.travel.security.AuthenticatedUser;
 import com.corporate.travel.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,7 +29,7 @@ public class NotificationController {
     @GetMapping
     @Operation(summary = "Get recent notifications for logged in user")
     public ResponseEntity<ApiResponse<List<Notification>>> getMyNotifications(@AuthenticationPrincipal UserPrincipal principal) {
-        Long userId = principal != null ? principal.getId() : 5L;
+        Long userId = AuthenticatedUser.requireId(principal);
         return ResponseEntity.ok(ApiResponse.ok(notificationService.getMyNotifications(userId), "Notifications retrieved"));
     }
 
