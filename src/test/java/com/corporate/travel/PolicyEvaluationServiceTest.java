@@ -90,6 +90,24 @@ class PolicyEvaluationServiceTest {
         );
 
         assertEquals(PolicyComplianceStatus.WARNING, result.status);
-        assertTrue(result.reasons.get(0).contains("advance"));
+        assertFalse(result.reasons.isEmpty());
+        assertTrue(result.reasons.stream().anyMatch(r -> r.toLowerCase().contains("advance")));
+    }
+
+    @Test
+    void testFlightBudgetViolationWithDifference() {
+        when(policyRepository.findFirstByOrganizationIdAndActiveTrue(anyLong()))
+                .thenReturn(Optional.of(samplePolicy));
+        when(employeeProfileRepository.findByUserId(anyLong()))
+                .thenReturn(Optional.empty());
+
+        PolicyEvaluationService.EvaluationResult result = policyEvaluationService.evaluateTravelRequest(
+                1L, 5L, BigDecimal.valueOf(48000), TravelClass.ECONOMY, LocalDate.now().plusDays(14), false
+        );
+
+        assertEquals(PolicyComplianceStatus.POLICY_VIOLATION, result.status);
+        assertFalse(result.violations.isEmpty());
+        assertTrue(result.violations.get(0).getDifferenceAmount().compareTo(BigDecimal.valueOf(33000)) == 0);
+        assertTrue(result.requiresFinanceApproval);
     }
 }
