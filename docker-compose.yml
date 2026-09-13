@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  mysql-db:
+    image: mysql:8.0
+    container_name: corporatetravel360-mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: corporate_db
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_USER: corporate_user
+      MYSQL_PASSWORD: corporate_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - corporate-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  corporate-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: corporatetravel360-api
+    restart: always
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/corporate_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: corporate_user
+      SPRING_DATASOURCE_PASSWORD: corporate_pass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      JWT_SECRET: AeroCorpTravelSecretKeyForJWTAuthentication2026EnterpriseSecuredSignatureKey9841
+      JWT_EXPIRATION_MS: 86400000
+    ports:
+      - "8080:8080"
+    networks:
+      - corporate-net
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  corporate-net:
+    driver: bridge
