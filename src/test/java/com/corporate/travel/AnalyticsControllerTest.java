@@ -13,7 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@WithMockUser(username = "finance", roles = {"FINANCE"})
+@WithMockUser(username = "finance", authorities = {"ROLE_FINANCE", "PERM_ANALYTICS_VIEW"})
 class AnalyticsControllerTest {
 
     @Autowired

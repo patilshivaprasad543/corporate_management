@@ -2,9 +2,12 @@ package com.corporate.travel;
 
 import com.corporate.travel.dto.AuthDto;
 import com.corporate.travel.dto.TravelRequestDto;
+import com.corporate.travel.entity.Organization;
 import com.corporate.travel.entity.enums.TripType;
+import com.corporate.travel.repository.OrganizationRepository;
 import com.corporate.travel.service.AuthService;
 import com.corporate.travel.service.TravelRequestService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,12 +26,26 @@ class TravelWorkflowIntegrationTest {
     @Autowired
     private TravelRequestService travelRequestService;
 
+    @Autowired
+    private OrganizationRepository organizationRepository;
+
+    private Long acmeOrgId;
+
+    @BeforeEach
+    void setUp() {
+        acmeOrgId = organizationRepository.findByCode("ACME-GLOBAL")
+                .map(Organization::getId)
+                .orElseThrow();
+    }
+
     @Test
     void testEmployeeLoginAndTravelRequestCreation() {
         // 1. Authenticate demo employee
         AuthDto.AuthResponse authResponse = authService.login(AuthDto.LoginRequest.builder()
                 .usernameOrEmail("employee")
                 .password("password123")
+                .portal("EMPLOYEE")
+                .organizationId(acmeOrgId)
                 .build());
 
         assertNotNull(authResponse);

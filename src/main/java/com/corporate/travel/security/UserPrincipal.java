@@ -1,13 +1,18 @@
 package com.corporate.travel.security;
 
+import com.corporate.travel.entity.Permission;
+import com.corporate.travel.entity.Role;
 import com.corporate.travel.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class UserPrincipal implements UserDetails {
@@ -19,6 +24,7 @@ public class UserPrincipal implements UserDetails {
     private String password;
     private String fullName;
     private Long organizationId;
+    private boolean enabled = true;
     private Collection<? extends GrantedAuthority> authorities;
 
     public UserPrincipal() {}
@@ -34,11 +40,23 @@ public class UserPrincipal implements UserDetails {
     }
 
     public static UserPrincipal create(User user) {
-        List<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
-                .collect(Collectors.toList());
+        Set<String> authorityNames = new HashSet<>();
+        for (Role role : user.getRoles()) {
+            authorityNames.add(role.getName().name());
+            for (Permission permission : role.getPermissions()) {
+                authorityNames.add(SecurityConstants.permissionAuthority(permission.getName().name()));
+            }
+        }
+        List<GrantedAuthority> authorities = authorityNames.stream()
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toCollection(ArrayList::new));
 
-        return new UserPrincipal(
+        boolean accountEnabled = Boolean.TRUE.equals(user.getActive())
+                && Boolean.TRUE.equals(user.getEmailVerified())
+                && user.getStatus() != com.corporate.travel.entity.enums.UserStatus.SUSPENDED
+                && user.getStatus() != com.corporate.travel.entity.enums.UserStatus.DEACTIVATED;
+
+        UserPrincipal principal = new UserPrincipal(
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
@@ -47,6 +65,8 @@ public class UserPrincipal implements UserDetails {
                 user.getOrganization() != null ? user.getOrganization().getId() : null,
                 authorities
         );
+        principal.setEnabled(accountEnabled);
+        return principal;
     }
 
     public Long getId() { return id; }
@@ -82,8 +102,10 @@ public class UserPrincipal implements UserDetails {
     @Override
     public boolean isCredentialsNonExpired() { return true; }
 
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
     @Override
-    public boolean isEnabled() { return true; }
+    public boolean isEnabled() { return enabled; }
 
     public static UserPrincipalBuilder builder() { return new UserPrincipalBuilder(); }
 

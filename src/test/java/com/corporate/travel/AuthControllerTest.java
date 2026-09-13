@@ -1,7 +1,10 @@
 package com.corporate.travel;
 
 import com.corporate.travel.dto.AuthDto;
+import com.corporate.travel.entity.Organization;
+import com.corporate.travel.repository.OrganizationRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -23,11 +26,25 @@ class AuthControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private OrganizationRepository organizationRepository;
+
+    private Long acmeOrgId;
+
+    @BeforeEach
+    void setUp() {
+        acmeOrgId = organizationRepository.findByCode("ACME-GLOBAL")
+                .map(Organization::getId)
+                .orElseThrow();
+    }
+
     @Test
     void testValidLogin() throws Exception {
         AuthDto.LoginRequest request = AuthDto.LoginRequest.builder()
                 .usernameOrEmail("employee")
                 .password("password123")
+                .portal("EMPLOYEE")
+                .organizationId(acmeOrgId)
                 .build();
 
         mockMvc.perform(post("/api/auth/login")
@@ -36,6 +53,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
                 .andExpect(jsonPath("$.data.username").value("employee"));
     }
 
@@ -44,6 +62,8 @@ class AuthControllerTest {
         AuthDto.LoginRequest request = AuthDto.LoginRequest.builder()
                 .usernameOrEmail("employee")
                 .password("wrongpassword")
+                .portal("EMPLOYEE")
+                .organizationId(acmeOrgId)
                 .build();
 
         mockMvc.perform(post("/api/auth/login")

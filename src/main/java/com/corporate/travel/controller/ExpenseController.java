@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +28,7 @@ public class ExpenseController {
     private final ExpenseService expenseService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_EXPENSE_CREATE')")
     @Operation(summary = "Submit a new travel expense report")
     public ResponseEntity<ApiResponse<ExpenseDto.ReportResponse>> createReport(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -44,6 +46,7 @@ public class ExpenseController {
     }
 
     @PostMapping("/{reportId}/approve")
+    @PreAuthorize("hasAuthority('PERM_EXPENSE_APPROVE')")
     @Operation(summary = "Approve and process reimbursement for expense report")
     public ResponseEntity<ApiResponse<ExpenseDto.ReportResponse>> approveReport(
             @PathVariable("reportId") Long reportId,
@@ -53,6 +56,7 @@ public class ExpenseController {
     }
 
     @PostMapping("/{reportId}/reject")
+    @PreAuthorize("hasAuthority('PERM_EXPENSE_APPROVE')")
     @Operation(summary = "Reject expense report")
     public ResponseEntity<ApiResponse<ExpenseDto.ReportResponse>> rejectReport(
             @PathVariable("reportId") Long reportId,
@@ -62,6 +66,7 @@ public class ExpenseController {
     }
 
     @GetMapping("/my")
+    @PreAuthorize("hasAuthority('PERM_EXPENSE_VIEW')")
     @Operation(summary = "List current user's expense reports")
     public ResponseEntity<ApiResponse<List<ExpenseDto.ReportResponse>>> getMyReports(
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -70,6 +75,7 @@ public class ExpenseController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PERM_EXPENSE_VIEW')")
     @Operation(summary = "List all expense reports for Finance audit")
     public ResponseEntity<ApiResponse<List<ExpenseDto.ReportResponse>>> getAllReports() {
         return ResponseEntity.ok(ApiResponse.ok(expenseService.getAllReports(), "All reports retrieved"));

@@ -11,6 +11,7 @@ import com.corporate.travel.service.TravelRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +29,7 @@ public class ApprovalController {
     private final TravelRequestService travelRequestService;
 
     @PostMapping("/{requestId}/approve")
+    @PreAuthorize("hasAuthority('PERM_TRAVEL_REQUEST_APPROVE')")
     @Operation(summary = "Approve a pending travel request")
     public ResponseEntity<ApiResponse<TravelRequestDto.Response>> approve(
             @PathVariable("requestId") Long requestId,
@@ -39,6 +41,7 @@ public class ApprovalController {
     }
 
     @PostMapping("/{requestId}/reject")
+    @PreAuthorize("hasAuthority('PERM_TRAVEL_REQUEST_REJECT')")
     @Operation(summary = "Reject a pending travel request with reason")
     public ResponseEntity<ApiResponse<TravelRequestDto.Response>> reject(
             @PathVariable("requestId") Long requestId,
@@ -50,6 +53,7 @@ public class ApprovalController {
     }
 
     @PostMapping("/{requestId}/request-changes")
+    @PreAuthorize("hasAuthority('PERM_TRAVEL_REQUEST_APPROVE')")
     @Operation(summary = "Request modifications on travel request")
     public ResponseEntity<ApiResponse<TravelRequestDto.Response>> requestChanges(
             @PathVariable("requestId") Long requestId,

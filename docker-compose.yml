@@ -33,14 +33,33 @@ services:
       mysql-db:
         condition: service_healthy
     environment:
+      SPRING_PROFILES_ACTIVE: mysql
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/corporate_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: corporate_user
       SPRING_DATASOURCE_PASSWORD: corporate_pass
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
       JWT_SECRET: AeroCorpTravelSecretKeyForJWTAuthentication2026EnterpriseSecuredSignatureKey9841
       JWT_EXPIRATION_MS: 86400000
     ports:
       - "8080:8080"
+    networks:
+      - corporate-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: corporatetravel360-web
+    restart: always
+    depends_on:
+      corporate-app:
+        condition: service_healthy
+    ports:
+      - "3000:80"
     networks:
       - corporate-net
 

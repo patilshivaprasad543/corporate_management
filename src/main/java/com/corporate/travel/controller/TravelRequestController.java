@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +27,7 @@ public class TravelRequestController {
     private final TravelRequestService travelRequestService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_TRAVEL_REQUEST_CREATE')")
     @Operation(summary = "Create and submit a new travel request")
     public ResponseEntity<ApiResponse<TravelRequestDto.Response>> createRequest(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -35,6 +37,7 @@ public class TravelRequestController {
     }
 
     @GetMapping("/my")
+    @PreAuthorize("hasAuthority('PERM_TRAVEL_REQUEST_VIEW')")
     @Operation(summary = "List current user's travel requests")
     public ResponseEntity<ApiResponse<List<TravelRequestDto.Response>>> getMyRequests(
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -43,12 +46,14 @@ public class TravelRequestController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PERM_TRAVEL_REQUEST_VIEW')")
     @Operation(summary = "List all organizational travel requests (Manager/Finance/Admin)")
     public ResponseEntity<ApiResponse<List<TravelRequestDto.Response>>> getAllRequests() {
         return ResponseEntity.ok(ApiResponse.ok(travelRequestService.getAllRequests(), "All requests retrieved"));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_TRAVEL_REQUEST_VIEW')")
     @Operation(summary = "Get travel request details by ID")
     public ResponseEntity<ApiResponse<TravelRequestDto.Response>> getRequestById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(ApiResponse.ok(travelRequestService.getRequestById(id), "Request details retrieved"));
