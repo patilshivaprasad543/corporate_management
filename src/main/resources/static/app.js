@@ -232,6 +232,15 @@ async function fetchInitialData() {
 // NAVIGATION & TABS SWITCHING
 // =========================================================================
 function navigateToTab(tabId) {
+  const roleKey = STATE.currentRole || 'ROLE_EMPLOYEE';
+  const allowed = (ROLE_NAVS[roleKey] || ROLE_NAVS.ROLE_EMPLOYEE).map(item => item.id);
+  
+  if (!allowed.includes(tabId)) {
+    const roleName = roleKey.replace('ROLE_', '').replace('_', ' ');
+    showToast(`Access Restricted: The '${tabId}' module is not available in the ${roleName} portal.`, 'warning');
+    tabId = allowed.includes('dashboard') ? 'dashboard' : (allowed[0] || 'login-portal');
+  }
+
   STATE.activeTab = tabId;
   renderNavigation();
   updateTopStripActiveState(tabId);
@@ -240,27 +249,44 @@ function navigateToTab(tabId) {
 
 function updateTopStripActiveState(tabId) {
   try {
-    document.querySelectorAll('.strip-btn').forEach(btn => {
-      btn.className = 'strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition text-xs font-semibold';
-    });
-    const activeBtn = document.getElementById(`strip-${tabId}`);
-    if (activeBtn) {
-      activeBtn.className = 'strip-btn px-3.5 py-1 rounded-lg bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 shrink-0 transition text-xs font-bold';
+    const roleKey = STATE.currentRole || 'ROLE_EMPLOYEE';
+    const allowed = (ROLE_NAVS[roleKey] || ROLE_NAVS.ROLE_EMPLOYEE).map(item => item.id);
+    
+    // Update role badge in top strip
+    const stripRoleName = document.getElementById('stripRoleName');
+    if (stripRoleName) {
+      stripRoleName.textContent = `${roleKey.replace('ROLE_', '').replace('_', ' ')} PORTAL`;
     }
+
+    document.querySelectorAll('.strip-btn').forEach(btn => {
+      const btnTab = btn.id.replace('strip-', '');
+      if (allowed.includes(btnTab)) {
+        btn.style.display = 'inline-flex';
+        if (btnTab === tabId) {
+          btn.className = 'strip-btn px-3.5 py-1 rounded-lg bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 shrink-0 transition text-xs font-bold';
+        } else {
+          btn.className = 'strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition text-xs font-semibold';
+        }
+      } else {
+        btn.style.display = 'none';
+      }
+    });
   } catch(e) {}
 }
 
 function renderNavigation() {
   const navContainer = document.getElementById('navContainer');
   if (!navContainer) return;
-  const items = STATE.showAllNavModules ? ALL_MODULES : (ROLE_NAVS[STATE.currentRole] || ROLE_NAVS.ROLE_EMPLOYEE);
+  const roleKey = STATE.currentRole || 'ROLE_EMPLOYEE';
+  const items = ROLE_NAVS[roleKey] || ROLE_NAVS.ROLE_EMPLOYEE;
+  const roleName = roleKey.replace('ROLE_', '').replace('_', ' ');
 
   navContainer.innerHTML = `
     <div class="px-2 py-1 mb-2 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-      <span>${STATE.showAllNavModules ? 'All 11 Modules' : 'Role Navigation'}</span>
-      <button onclick="toggleAllNavModules()" class="text-indigo-400 hover:text-white font-mono text-[9px] underline">
-        ${STATE.showAllNavModules ? 'Role View' : 'Show All'}
-      </button>
+      <span class="flex items-center gap-1.5 text-indigo-400">
+        <i data-lucide="shield" class="w-3 h-3"></i> ${roleName} PORTAL
+      </span>
+      <span class="text-[9px] font-mono text-slate-500">${items.length} Modules</span>
     </div>
 
     ${items.map(item => `
@@ -275,12 +301,6 @@ function renderNavigation() {
   `;
 
   safeCreateIcons();
-}
-
-function toggleAllNavModules() {
-  STATE.showAllNavModules = !STATE.showAllNavModules;
-  renderNavigation();
-  showToast(STATE.showAllNavModules ? 'Showing all 11 platform modules in sidebar.' : 'Filtered sidebar to active role modules.');
 }
 
 function loadActiveTab() {
@@ -462,6 +482,12 @@ async function loginAsRole(roleKey, showNotification = true) {
   STATE.currentRole = roleKey;
   STATE.currentUser = user;
 
+  // Enforce role-based tab access
+  const allowed = (ROLE_NAVS[roleKey] || ROLE_NAVS.ROLE_EMPLOYEE).map(i => i.id);
+  if (!allowed.includes(STATE.activeTab)) {
+    STATE.activeTab = allowed.includes('dashboard') ? 'dashboard' : (allowed[0] || 'login-portal');
+  }
+
   const nameEl = document.getElementById('userNameDisplay');
   const roleEl = document.getElementById('userRoleBadge');
   const avatarEl = document.getElementById('userAvatar');
@@ -473,14 +499,16 @@ async function loginAsRole(roleKey, showNotification = true) {
   if (roleSel) roleSel.value = roleKey;
 
   updateWalletDisplay();
+  renderNavigation();
+  updateTopStripActiveState(STATE.activeTab);
+
   if (showNotification) {
-    showToast(`Logged in as ${user.name} (${user.designation})`);
+    showToast(`Active Portal: ${user.name} (${roleKey.replace('ROLE_', '')}) — ${allowed.length} modules accessible.`);
   }
 }
 
-function switchDemoRole(roleKey) {
-  loginAsRole(roleKey);
-  renderNavigation();
+async function switchDemoRole(roleKey) {
+  await loginAsRole(roleKey, true);
   loadActiveTab();
 }
 
@@ -607,6 +635,7 @@ function loadLoginPortalTab() {
         ${Object.keys(DEMO_USERS).map(k => {
           const u = DEMO_USERS[k];
           const isCur = STATE.currentRole === k;
+          const roleNavItems = (ROLE_NAVS[k] || []).filter(item => item.id !== 'login-portal');
           return `
             <div class="p-5 rounded-2xl border transition-all relative ${isCur ? 'bg-gradient-to-b from-indigo-900/40 to-dark-800 border-indigo-500 ring-2 ring-indigo-500/50 shadow-xl' : 'bg-dark-800/90 hover:bg-dark-700/80 border-slate-800 hover:border-slate-600'}">
               <div class="flex items-start justify-between gap-3">
@@ -617,7 +646,7 @@ function loadLoginPortalTab() {
                   <div>
                     <h4 class="text-sm font-extrabold text-white flex items-center gap-2">
                       ${u.name}
-                      ${isCur ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[9px] font-bold border border-emerald-500/30">CURRENT</span>` : ''}
+                      ${isCur ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[9px] font-bold border border-emerald-500/30">ACTIVE</span>` : ''}
                     </h4>
                     <p class="text-[11px] text-indigo-300 font-semibold">${u.designation}</p>
                     <p class="text-[10px] text-slate-400 font-mono mt-0.5">${u.email}</p>
@@ -633,6 +662,16 @@ function loadLoginPortalTab() {
                 <div class="text-right">
                   <span class="text-[10px] text-slate-500 block">Allocated Budget</span>
                   <span class="text-[11px] font-extrabold text-emerald-400">${formatMoney(u.wallet.allocated)}</span>
+                </div>
+              </div>
+
+              <!-- Permitted Modules Pill List -->
+              <div class="mt-3 pt-2.5 border-t border-slate-800/80">
+                <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1.5 font-bold uppercase tracking-wider">
+                  <span>Authorized Modules (${roleNavItems.length})</span>
+                </div>
+                <div class="flex flex-wrap gap-1">
+                  ${roleNavItems.map(m => `<span class="px-2 py-0.5 rounded-md bg-dark-900/90 border border-slate-700/60 text-[10px] font-semibold text-indigo-300 flex items-center gap-1"><i data-lucide="${m.icon}" class="w-2.5 h-2.5 text-indigo-400"></i> ${m.label}</span>`).join('')}
                 </div>
               </div>
 
@@ -718,32 +757,74 @@ function loadLoginPortalTab() {
       </div>
     </div>
 
-    <!-- Section 3: Launch Any of the 11 Modules Directly -->
-    <div class="glass-panel p-6 rounded-3xl border border-slate-800 mb-8">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h3 class="text-base font-extrabold text-white flex items-center gap-2">
-            <i data-lucide="layout-grid" class="w-5 h-5 text-indigo-400"></i> Platform Modules Directory (Click to Launch)
-          </h3>
-          <p class="text-xs text-slate-400">Open and interact with any platform module immediately from this portal.</p>
-        </div>
-      </div>
+    <!-- Section 3: Authorized Modules for Current Active Portal -->
+    ${(() => {
+      const allowedModuleIds = (ROLE_NAVS[STATE.currentRole] || ROLE_NAVS.ROLE_EMPLOYEE).map(item => item.id).filter(id => id !== 'login-portal');
+      const authorizedModules = ALL_MODULES.filter(m => allowedModuleIds.includes(m.id));
+      const restrictedModules = ALL_MODULES.filter(m => m.id !== 'login-portal' && !allowedModuleIds.includes(m.id));
+      const roleDisplayName = (STATE.currentRole || 'ROLE_EMPLOYEE').replace('ROLE_', '').replace('_', ' ');
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        ${ALL_MODULES.filter(m => m.id !== 'login-portal').map(m => `
-          <button onclick="navigateToTab('${m.id}')" class="p-4 rounded-2xl bg-dark-900 hover:bg-dark-700/80 border border-slate-800 hover:border-indigo-500 text-left transition group shadow-sm">
-            <div class="flex items-center justify-between mb-2">
-              <div class="h-9 w-9 rounded-xl bg-indigo-500/15 text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition">
-                <i data-lucide="${m.icon}" class="w-4 h-4"></i>
-              </div>
-              <span class="text-[10px] text-slate-500 group-hover:text-indigo-300 font-bold transition">Launch ➔</span>
+      return `
+        <div class="glass-panel p-6 rounded-3xl border border-slate-800 mb-8">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+                <i data-lucide="shield-check" class="w-5 h-5 text-emerald-400"></i> Authorized Modules for ${roleDisplayName} Portal (${authorizedModules.length} Available)
+              </h3>
+              <p class="text-xs text-slate-400">Showing only modules accessible to <strong>${STATE.currentUser.name}</strong> (${STATE.currentUser.designation}).</p>
             </div>
-            <h4 class="text-xs font-bold text-white group-hover:text-indigo-300 transition">${m.label}</h4>
-            <p class="text-[10px] text-slate-400 mt-1 line-clamp-2">${m.desc}</p>
-          </button>
-        `).join('')}
-      </div>
-    </div>
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              Role RBAC Enforced
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 ${restrictedModules.length > 0 ? 'mb-6' : ''}">
+            ${authorizedModules.map(m => `
+              <button onclick="navigateToTab('${m.id}')" class="p-4 rounded-2xl bg-dark-900 hover:bg-dark-700/80 border border-indigo-500/40 hover:border-indigo-400 text-left transition group shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="h-9 w-9 rounded-xl bg-indigo-500/15 text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition">
+                    <i data-lucide="${m.icon}" class="w-4 h-4"></i>
+                  </div>
+                  <span class="text-[10px] text-emerald-400 font-bold transition flex items-center gap-1">
+                    <i data-lucide="check" class="w-3 h-3"></i> Open ➔
+                  </span>
+                </div>
+                <h4 class="text-xs font-bold text-white group-hover:text-indigo-300 transition">${m.label}</h4>
+                <p class="text-[10px] text-slate-400 mt-1 line-clamp-2">${m.desc}</p>
+              </button>
+            `).join('')}
+          </div>
+
+          ${restrictedModules.length > 0 ? `
+            <div class="pt-5 border-t border-slate-800/80">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                  <i data-lucide="lock" class="w-3.5 h-3.5 text-rose-400"></i>
+                  <span>Restricted Modules (${restrictedModules.length} locked for ${roleDisplayName})</span>
+                </div>
+                <span class="text-[11px] text-slate-500">Requires elevated role permissions</span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                ${restrictedModules.map(m => `
+                  <div class="p-3.5 rounded-2xl bg-dark-950/60 border border-slate-800/60 text-left opacity-50 cursor-not-allowed">
+                    <div class="flex items-center justify-between mb-1.5">
+                      <div class="h-7 w-7 rounded-lg bg-slate-800/80 text-slate-500 flex items-center justify-center">
+                        <i data-lucide="${m.icon}" class="w-3.5 h-3.5"></i>
+                      </div>
+                      <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1">
+                        <i data-lucide="lock" class="w-2.5 h-2.5"></i> Locked
+                      </span>
+                    </div>
+                    <h4 class="text-xs font-semibold text-slate-400">${m.label}</h4>
+                    <p class="text-[10px] text-slate-500 mt-0.5 line-clamp-1">${m.desc}</p>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    })()}
   `;
 
   safeCreateIcons();
@@ -2628,7 +2709,6 @@ window.loginAsRole = loginAsRole;
 window.switchDemoRole = switchDemoRole;
 window.switchTravelMode = switchTravelMode;
 window.changeCurrency = changeCurrency;
-window.toggleAllNavModules = toggleAllNavModules;
 window.toggleNotificationsModal = toggleNotificationsModal;
 window.toggleLiveChatDrawer = toggleLiveChatDrawer;
 window.sendChatMessage = sendChatMessage;
