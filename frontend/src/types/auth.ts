@@ -24,6 +24,21 @@ export interface LoginRequest {
   email: string;
   password: string;
   portal: PortalType;
+  organizationId?: number;
+}
+
+export interface CompanyOption {
+  id: number;
+  name: string;
+  code: string;
+  country?: string;
+  currencyCode?: string;
+}
+
+export interface DepartmentOption {
+  id: number;
+  name: string;
+  code?: string;
 }
 
 export interface AuthResponse {

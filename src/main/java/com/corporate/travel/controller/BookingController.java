@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +27,7 @@ public class BookingController {
     private final BookingService bookingService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_BOOKING_CREATE')")
     @Operation(summary = "Book flight/hotel/transport with PNR generation and itinerary sync")
     public ResponseEntity<ApiResponse<BookingDto.Response>> createBooking(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -35,6 +37,7 @@ public class BookingController {
     }
 
     @GetMapping("/my")
+    @PreAuthorize("hasAuthority('PERM_BOOKING_VIEW')")
     @Operation(summary = "List all bookings for current user")
     public ResponseEntity<ApiResponse<List<BookingDto.Response>>> getMyBookings(
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -43,6 +46,7 @@ public class BookingController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PERM_BOOKING_VIEW')")
     @Operation(summary = "List all bookings in organization")
     public ResponseEntity<ApiResponse<List<BookingDto.Response>>> getAllBookings() {
         return ResponseEntity.ok(ApiResponse.ok(bookingService.getAllBookings(), "All bookings retrieved"));

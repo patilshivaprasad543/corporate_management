@@ -1,5 +1,5 @@
 import api from './axios';
-import type { ApiResponse, AuthResponse, LoginRequest } from '../types/auth';
+import type { ApiResponse, AuthResponse, CompanyOption, DepartmentOption, LoginRequest } from '../types/auth';
 
 export async function login(request: LoginRequest): Promise<AuthResponse> {
   const res = await api.post<ApiResponse<AuthResponse>>('/auth/login', request);
@@ -10,11 +10,25 @@ export async function register(data: {
   username: string;
   email: string;
   password: string;
+  confirmPassword: string;
   firstName: string;
   lastName: string;
+  employeeId: string;
   phone?: string;
+  organizationId: number;
+  departmentId?: number;
 }): Promise<AuthResponse> {
   const res = await api.post<ApiResponse<AuthResponse>>('/auth/register', data);
+  return res.data.data;
+}
+
+export async function listCompanies(): Promise<CompanyOption[]> {
+  const res = await api.get<ApiResponse<CompanyOption[]>>('/auth/companies');
+  return res.data.data;
+}
+
+export async function listDepartments(organizationId: number): Promise<DepartmentOption[]> {
+  const res = await api.get<ApiResponse<DepartmentOption[]>>(`/auth/companies/${organizationId}/departments`);
   return res.data.data;
 }
 

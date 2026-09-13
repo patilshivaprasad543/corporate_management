@@ -2,8 +2,10 @@ package com.corporate.travel.controller;
 
 import com.corporate.travel.common.ApiResponse;
 import com.corporate.travel.dto.AuthDto;
+import com.corporate.travel.dto.OrganizationDto;
 import com.corporate.travel.security.UserPrincipal;
 import com.corporate.travel.service.AuthService;
+import com.corporate.travel.service.OrganizationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -17,9 +19,11 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final OrganizationService organizationService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, OrganizationService organizationService) {
         this.authService = authService;
+        this.organizationService = organizationService;
     }
 
     @PostMapping("/login")
@@ -61,6 +65,19 @@ public class AuthController {
         String token = request != null ? request.getRefreshToken() : null;
         authService.logout(token);
         return ResponseEntity.ok(ApiResponse.ok(null, "Logged out successfully"));
+    }
+
+    @GetMapping("/companies")
+    @Operation(summary = "List active companies for employee registration")
+    public ResponseEntity<ApiResponse<java.util.List<OrganizationDto.CompanyOption>>> listCompanies() {
+        return ResponseEntity.ok(ApiResponse.ok(organizationService.listActiveCompanies(), "Companies retrieved"));
+    }
+
+    @GetMapping("/companies/{organizationId}/departments")
+    @Operation(summary = "List departments for a company during registration")
+    public ResponseEntity<ApiResponse<java.util.List<OrganizationDto.DepartmentOption>>> listDepartments(
+            @PathVariable Long organizationId) {
+        return ResponseEntity.ok(ApiResponse.ok(organizationService.listDepartments(organizationId), "Departments retrieved"));
     }
 
     @GetMapping("/me")

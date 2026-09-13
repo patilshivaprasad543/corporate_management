@@ -16,7 +16,7 @@
 | 0 | Workspace Audit | ✅ Complete | cursor/cbtms-phases-0-2-8bcd |
 | 1 | Project Foundation | ✅ Complete | cursor/cbtms-phases-0-2-8bcd |
 | 2 | Database + Flyway + JPA | ✅ Complete | cursor/cbtms-phases-0-2-8bcd |
-| 3 | Auth + OTP + JWT + RBAC (enhance) | ⏳ Pending | — |
+| 3 | Auth + OTP + JWT + RBAC (enhance) | ✅ Complete | cursor/cbtms-phase-3-auth-8bcd |
 | 4 | Company + Department + Employee | ⏳ Pending | — |
 | 5 | Travel Policy Engine | ⏳ Pending | — |
 | 6 | Travel Request + State Machine | ⏳ Pending | — |
@@ -88,14 +88,20 @@
 
 ---
 
-## Phase 3 — Auth Enhancement (Next)
+## Phase 3 — Auth Enhancement ✅
 
-- Company-scoped login validation
-- `ForbiddenException` for permission checks
-- `@PreAuthorize` on controllers
-- Employee registration with company selection
-- Rate limiting on OTP endpoints
-- Security test expansion
+**Delivered:**
+- [x] Company-scoped login validation (`organizationId` required for all portals except Super Admin)
+- [x] `SecurityAuthorizationService` + permission authorities on `UserPrincipal`
+- [x] `@PreAuthorize` on travel, approval, expense, booking, audit, analytics controllers
+- [x] Employee registration with company, department, employee ID, domain validation
+- [x] Public `/api/auth/companies` and `/api/auth/companies/{id}/departments` endpoints
+- [x] OTP daily resend limit (DB-backed) + cooldown
+- [x] `CompanyContext` populated from JWT filter
+- [x] JWT `organizationId` claim
+- [x] `JwtAuthenticationEntryPoint` (401) + `JwtAccessDeniedHandler` (403)
+- [x] `AuthSecurityTest` — 9 new security scenarios (40 tests total)
+- [x] Frontend: company selector on login, full registration form
 
 ---
 

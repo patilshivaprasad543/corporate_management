@@ -36,6 +36,9 @@ public class OtpService {
     @Value("${app.otp.resend-cooldown-seconds:60}")
     private int resendCooldownSeconds;
 
+    @Value("${app.otp.max-resend-per-day:5}")
+    private int maxResendPerDay;
+
     private final Map<String, LocalDateTime> lastSentAt = new ConcurrentHashMap<>();
 
     public OtpService(OtpVerificationRepository otpRepository, UserRepository userRepository,
@@ -49,10 +52,7 @@ public class OtpService {
     @Transactional
     public void generateAndSendOtp(User user) {
         String email = user.getEmail();
-        LocalDateTime last = lastSentAt.get(email);
-        if (last != null && last.plusSeconds(resendCooldownSeconds).isAfter(LocalDateTime.now())) {
-            throw new BadRequestException("Please wait before requesting another OTP");
-        }
+        enforceResendLimits(email);
 
         String otp = String.format("%06d", RANDOM.nextInt(1_000_000));
         OtpVerification record = new OtpVerification();
@@ -97,5 +97,19 @@ public class OtpService {
         user.setEmailVerified(true);
         user.setStatus(com.corporate.travel.entity.enums.UserStatus.ACTIVE);
         userRepository.save(user);
+    }
+
+    private void enforceResendLimits(String email) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime last = lastSentAt.get(email);
+        if (last != null && last.plusSeconds(resendCooldownSeconds).isAfter(now)) {
+            throw new BadRequestException("Please wait before requesting another OTP");
+        }
+
+        long sentToday = otpRepository.countByEmailAndPurposeAndCreatedAtAfter(
+                email, PURPOSE_EMAIL_VERIFICATION, now.toLocalDate().atStartOfDay());
+        if (sentToday >= maxResendPerDay) {
+            throw new BadRequestException("Daily OTP resend limit exceeded. Try again tomorrow.");
+        }
     }
 }

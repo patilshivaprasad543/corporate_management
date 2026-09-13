@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import type { PortalConfig } from '../auth/portals';
+import * as authApi from '../api/authApi';
+import type { CompanyOption } from '../types/auth';
 
 interface LoginFormData {
   email: string;
   password: string;
+  organizationId?: string;
 }
 
 const accentMap: Record<string, string> = {
@@ -25,13 +28,27 @@ export default function PortalLoginPage({ config }: { config: PortalConfig }) {
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [companies, setCompanies] = useState<CompanyOption[]>([]);
+  const requiresCompany = config.portal !== 'SUPER_ADMIN';
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>();
+
+  useEffect(() => {
+    if (!requiresCompany) return;
+    authApi.listCompanies()
+      .then(setCompanies)
+      .catch(() => setCompanies([]));
+  }, [requiresCompany]);
 
   const onSubmit = async (data: LoginFormData) => {
     setApiError('');
     setLoading(true);
     try {
-      await login({ email: data.email, password: data.password, portal: config.portal });
+      await login({
+        email: data.email,
+        password: data.password,
+        portal: config.portal,
+        organizationId: requiresCompany ? Number(data.organizationId) : undefined,
+      });
       navigate(config.dashboardPath);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -55,6 +72,23 @@ export default function PortalLoginPage({ config }: { config: PortalConfig }) {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {requiresCompany && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Company</label>
+                <select
+                  {...register('organizationId', { required: 'Company is required' })}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+                  defaultValue=""
+                >
+                  <option value="" disabled>Select your company</option>
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                {errors.organizationId && <p className="text-red-500 text-sm mt-1">{errors.organizationId.message}</p>}
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
               <input

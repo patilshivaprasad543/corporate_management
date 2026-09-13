@@ -1,7 +1,10 @@
 package com.corporate.travel;
 
 import com.corporate.travel.dto.AuthDto;
+import com.corporate.travel.entity.Organization;
+import com.corporate.travel.repository.OrganizationRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,11 +27,24 @@ class PortalSecurityTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private OrganizationRepository organizationRepository;
+
+    private Long acmeOrgId;
+
+    @BeforeEach
+    void setUp() {
+        acmeOrgId = organizationRepository.findByCode("ACME-GLOBAL")
+                .map(Organization::getId)
+                .orElseThrow();
+    }
+
     private void assertLoginAllowed(String email, String portal) throws Exception {
         AuthDto.LoginRequest request = AuthDto.LoginRequest.builder()
                 .email(email)
                 .password("password123")
                 .portal(portal)
+                .organizationId("SUPER_ADMIN".equals(portal) ? null : acmeOrgId)
                 .build();
 
         mockMvc.perform(post("/api/auth/login")
@@ -44,6 +60,7 @@ class PortalSecurityTest {
                 .email(email)
                 .password("password123")
                 .portal(portal)
+                .organizationId(acmeOrgId)
                 .build();
 
         mockMvc.perform(post("/api/auth/login")

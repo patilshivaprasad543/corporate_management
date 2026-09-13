@@ -22,6 +22,8 @@ public class AuthDto {
         @NotBlank
         private String portal;
 
+        private Long organizationId;
+
         public LoginRequest() {}
 
         public String resolveIdentifier() {
@@ -38,6 +40,8 @@ public class AuthDto {
         public void setPassword(String password) { this.password = password; }
         public String getPortal() { return portal; }
         public void setPortal(String portal) { this.portal = portal; }
+        public Long getOrganizationId() { return organizationId; }
+        public void setOrganizationId(Long organizationId) { this.organizationId = organizationId; }
 
         public static LoginRequestBuilder builder() { return new LoginRequestBuilder(); }
 
@@ -46,11 +50,13 @@ public class AuthDto {
             private String usernameOrEmail;
             private String password;
             private String portal;
+            private Long organizationId;
 
             public LoginRequestBuilder email(String email) { this.email = email; return this; }
             public LoginRequestBuilder usernameOrEmail(String v) { this.usernameOrEmail = v; return this; }
             public LoginRequestBuilder password(String password) { this.password = password; return this; }
             public LoginRequestBuilder portal(String portal) { this.portal = portal; return this; }
+            public LoginRequestBuilder organizationId(Long organizationId) { this.organizationId = organizationId; return this; }
 
             public LoginRequest build() {
                 LoginRequest obj = new LoginRequest();
@@ -58,6 +64,7 @@ public class AuthDto {
                 obj.setUsernameOrEmail(this.usernameOrEmail);
                 obj.setPassword(this.password);
                 obj.setPortal(this.portal);
+                obj.setOrganizationId(this.organizationId);
                 return obj;
             }
         }
@@ -67,10 +74,13 @@ public class AuthDto {
         @NotBlank private String username;
         @NotBlank @Email private String email;
         @NotBlank private String password;
+        @NotBlank private String confirmPassword;
         @NotBlank private String firstName;
         @NotBlank private String lastName;
+        @NotBlank private String employeeId;
         private String phone;
         private Long organizationId;
+        private Long departmentId;
 
         public RegisterRequest() {}
 
@@ -80,6 +90,8 @@ public class AuthDto {
         public void setEmail(String email) { this.email = email; }
         public String getPassword() { return password; }
         public void setPassword(String password) { this.password = password; }
+        public String getConfirmPassword() { return confirmPassword; }
+        public void setConfirmPassword(String confirmPassword) { this.confirmPassword = confirmPassword; }
         public String getFirstName() { return firstName; }
         public void setFirstName(String firstName) { this.firstName = firstName; }
         public String getLastName() { return lastName; }
@@ -88,6 +100,10 @@ public class AuthDto {
         public void setPhone(String phone) { this.phone = phone; }
         public Long getOrganizationId() { return organizationId; }
         public void setOrganizationId(Long organizationId) { this.organizationId = organizationId; }
+        public String getEmployeeId() { return employeeId; }
+        public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
+        public Long getDepartmentId() { return departmentId; }
+        public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
     }
 
     public static class OtpVerifyRequest {

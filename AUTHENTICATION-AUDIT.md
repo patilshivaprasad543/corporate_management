@@ -97,3 +97,34 @@ src/main/java/com/corporate/travel/
 4. Extend `AuthService` with portal validation, refresh, logout, OTP registration
 5. Create React/Vite/TypeScript frontend with 7 separate login portals + route guards
 6. Add `PortalSecurityTest` for cross-portal denial scenarios
+
+---
+
+## Phase 3 Enhancements (2026-09-13)
+
+### Company-Scoped Login
+- Login requires `organizationId` for all portals except `SUPER_ADMIN`
+- Backend rejects login when user's assigned company does not match selected company
+- JWT includes `organizationId` claim; `CompanyContext` thread-local set per request
+
+### Permission-Based Authorization
+- `UserPrincipal` authorities include `PERM_*` from role permissions
+- `@PreAuthorize("hasAuthority('PERM_...')")` on controllers
+- `SecurityAuthorizationService` for programmatic checks
+
+### Registration
+- Required: company, employee ID, password confirmation
+- Email domain validated against company `domainName`
+- Employee profile created on registration with optional department
+
+### OTP Rate Limiting
+- Cooldown between resends (configurable, default 60s)
+- Daily resend cap (configurable, default 5/day, DB-counted)
+
+### Security Handlers
+- `JwtAuthenticationEntryPoint` → 401 JSON for unauthenticated API access
+- `JwtAccessDeniedHandler` → 403 JSON for permission/role denial
+
+### Tests
+- `AuthSecurityTest` — 9 scenarios (401, 403, wrong company, registration)
+- Total: **40 backend tests passing**

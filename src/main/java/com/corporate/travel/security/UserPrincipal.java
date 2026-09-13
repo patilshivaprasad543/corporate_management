@@ -1,13 +1,18 @@
 package com.corporate.travel.security;
 
+import com.corporate.travel.entity.Permission;
+import com.corporate.travel.entity.Role;
 import com.corporate.travel.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class UserPrincipal implements UserDetails {
@@ -35,9 +40,16 @@ public class UserPrincipal implements UserDetails {
     }
 
     public static UserPrincipal create(User user) {
-        List<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
-                .collect(Collectors.toList());
+        Set<String> authorityNames = new HashSet<>();
+        for (Role role : user.getRoles()) {
+            authorityNames.add(role.getName().name());
+            for (Permission permission : role.getPermissions()) {
+                authorityNames.add(SecurityConstants.permissionAuthority(permission.getName().name()));
+            }
+        }
+        List<GrantedAuthority> authorities = authorityNames.stream()
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toCollection(ArrayList::new));
 
         boolean accountEnabled = Boolean.TRUE.equals(user.getActive())
                 && Boolean.TRUE.equals(user.getEmailVerified())

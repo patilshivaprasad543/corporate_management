@@ -1,6 +1,8 @@
 package com.corporate.travel.service;
 
 import com.corporate.travel.dto.AuthDto;
+import com.corporate.travel.entity.Department;
+import com.corporate.travel.entity.EmployeeProfile;
 import com.corporate.travel.entity.Organization;
 import com.corporate.travel.entity.RefreshToken;
 import com.corporate.travel.entity.Role;
@@ -10,6 +12,8 @@ import com.corporate.travel.entity.enums.PortalType;
 import com.corporate.travel.entity.enums.RoleType;
 import com.corporate.travel.entity.enums.UserStatus;
 import com.corporate.travel.exception.BadRequestException;
+import com.corporate.travel.repository.DepartmentRepository;
+import com.corporate.travel.repository.EmployeeProfileRepository;
 import com.corporate.travel.repository.OrganizationRepository;
 import com.corporate.travel.repository.RoleRepository;
 import com.corporate.travel.repository.TravelWalletRepository;
@@ -45,13 +49,19 @@ public class AuthService {
     private final PortalAuthorizationService portalAuthorizationService;
     private final RefreshTokenService refreshTokenService;
     private final OtpService otpService;
+    private final OrganizationService organizationService;
+    private final DepartmentRepository departmentRepository;
+    private final EmployeeProfileRepository employeeProfileRepository;
 
     public AuthService(AuthenticationManager authenticationManager, UserRepository userRepository,
                        RoleRepository roleRepository, OrganizationRepository organizationRepository,
                        TravelWalletRepository walletRepository, PasswordEncoder passwordEncoder,
                        JwtTokenProvider tokenProvider, AuditService auditService,
                        PortalAuthorizationService portalAuthorizationService,
-                       RefreshTokenService refreshTokenService, OtpService otpService) {
+                       RefreshTokenService refreshTokenService, OtpService otpService,
+                       OrganizationService organizationService,
+                       DepartmentRepository departmentRepository,
+                       EmployeeProfileRepository employeeProfileRepository) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -63,6 +73,9 @@ public class AuthService {
         this.portalAuthorizationService = portalAuthorizationService;
         this.refreshTokenService = refreshTokenService;
         this.otpService = otpService;
+        this.organizationService = organizationService;
+        this.departmentRepository = departmentRepository;
+        this.employeeProfileRepository = employeeProfileRepository;
     }
 
     @Transactional
@@ -78,7 +91,7 @@ public class AuthService {
         User user = userRepository.findById(principal.getId())
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
-        portalAuthorizationService.validatePortalAccess(user, portal);
+        portalAuthorizationService.validatePortalAccess(user, portal, request.getOrganizationId());
 
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
@@ -95,6 +108,16 @@ public class AuthService {
 
     @Transactional
     public AuthDto.AuthResponse register(AuthDto.RegisterRequest request) {
+        if (request.getOrganizationId() == null) {
+            throw new BadRequestException("Company selection is required");
+        }
+        if (request.getPassword() == null || request.getConfirmPassword() == null
+                || !request.getPassword().equals(request.getConfirmPassword())) {
+            throw new BadRequestException("Password and confirm password must match");
+        }
+        if (request.getPassword().length() < 8) {
+            throw new BadRequestException("Password must be at least 8 characters");
+        }
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new BadRequestException("Username is already taken");
         }
@@ -102,17 +125,27 @@ public class AuthService {
             throw new BadRequestException("Email is already registered");
         }
 
+        Organization org = organizationService.requireActiveOrganization(request.getOrganizationId());
+        validateEmailDomain(request.getEmail(), org);
+
+        String employeeId = request.getEmployeeId().trim();
+        if (userRepository.existsByEmployeeIdAndOrganization_Id(employeeId, org.getId())
+                || employeeProfileRepository.existsByEmployeeCodeAndUser_Organization_Id(employeeId, org.getId())) {
+            throw new BadRequestException("Employee ID is already registered for this company");
+        }
+
+        Department department = null;
+        if (request.getDepartmentId() != null) {
+            department = departmentRepository.findById(request.getDepartmentId())
+                    .orElseThrow(() -> new BadRequestException("Department not found"));
+            if (department.getOrganization() == null || !department.getOrganization().getId().equals(org.getId())) {
+                throw new BadRequestException("Department does not belong to the selected company");
+            }
+        }
+
         Role userRole = roleRepository.findByName(RoleType.ROLE_EMPLOYEE)
                 .orElseGet(() -> roleRepository.save(Role.builder()
                         .name(RoleType.ROLE_EMPLOYEE).description("Employee").build()));
-
-        Organization org = null;
-        if (request.getOrganizationId() != null) {
-            org = organizationRepository.findById(request.getOrganizationId()).orElse(null);
-        }
-        if (org == null) {
-            org = organizationRepository.findAll().stream().findFirst().orElse(null);
-        }
 
         User user = User.builder()
                 .username(request.getUsername())
@@ -121,6 +154,7 @@ public class AuthService {
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .phone(request.getPhone())
+                .employeeId(employeeId)
                 .roles(new HashSet<>(Collections.singletonList(userRole)))
                 .organization(org)
                 .active(true)
@@ -129,6 +163,13 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
+
+        employeeProfileRepository.save(EmployeeProfile.builder()
+                .user(savedUser)
+                .employeeCode(employeeId)
+                .department(department)
+                .manager(department != null ? department.getManager() : null)
+                .build());
 
         walletRepository.save(TravelWallet.builder()
                 .user(savedUser)
@@ -246,5 +287,16 @@ public class AuthService {
                 .portal(portal != null ? portal.name() : null)
                 .emailVerified(user.getEmailVerified())
                 .build();
+    }
+
+    private void validateEmailDomain(String email, Organization org) {
+        if (org.getDomainName() == null || org.getDomainName().isBlank()) {
+            return;
+        }
+        String domain = org.getDomainName().trim().toLowerCase();
+        String emailDomain = email.substring(email.indexOf('@') + 1).trim().toLowerCase();
+        if (!emailDomain.equals(domain)) {
+            throw new BadRequestException("Email must use your company domain: @" + domain);
+        }
     }
 }

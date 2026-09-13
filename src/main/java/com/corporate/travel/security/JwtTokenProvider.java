@@ -49,15 +49,19 @@ public class JwtTokenProvider {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(Long.toString(userPrincipal.getId()))
                 .claim("username", userPrincipal.getUsername())
                 .claim("email", userPrincipal.getEmail())
                 .claim("roles", userPrincipal.getAuthorities().stream().map(a -> a.getAuthority()).toList())
                 .issuedAt(now)
-                .expiration(expiryDate)
-                .signWith(getSigningKey(), Jwts.SIG.HS256)
-                .compact();
+                .expiration(expiryDate);
+
+        if (userPrincipal.getOrganizationId() != null) {
+            builder.claim("organizationId", userPrincipal.getOrganizationId());
+        }
+
+        return builder.signWith(getSigningKey(), Jwts.SIG.HS256).compact();
     }
 
     public Long getUserIdFromJWT(String token) {

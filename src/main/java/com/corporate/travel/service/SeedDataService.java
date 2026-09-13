@@ -78,6 +78,18 @@ public class SeedDataService implements CommandLineRunner {
         }
 
         // 2. Organization
+        Organization betaOrg = organizationRepository.save(Organization.builder()
+                .name("Beta Industries Ltd.")
+                .code("BETA-IND")
+                .domainName("betaindustries.com")
+                .city("Mumbai")
+                .state("Maharashtra")
+                .country("India")
+                .currencyCode("INR")
+                .annualTravelBudget(BigDecimal.valueOf(12000000))
+                .active(true)
+                .build());
+
         Organization org = organizationRepository.save(Organization.builder()
                 .name("Acme Global Technologies Inc.")
                 .code("ACME-GLOBAL")
