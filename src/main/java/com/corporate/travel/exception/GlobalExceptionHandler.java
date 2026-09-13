@@ -36,6 +36,11 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), "PORTAL_ACCESS_DENIED"), HttpStatus.FORBIDDEN);
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiResponse<Object>> handleForbidden(ForbiddenException ex) {
+        return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), "FORBIDDEN"), HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Object>> handleBadCredentials(BadCredentialsException ex) {
         return new ResponseEntity<>(ApiResponse.error("Invalid username or password", "BAD_CREDENTIALS"), HttpStatus.UNAUTHORIZED);
