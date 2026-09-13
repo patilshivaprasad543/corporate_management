@@ -31,6 +31,11 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), "UNAUTHORIZED"), HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(PortalAccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Object>> handlePortalAccessDenied(PortalAccessDeniedException ex) {
+        return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), "PORTAL_ACCESS_DENIED"), HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Object>> handleBadCredentials(BadCredentialsException ex) {
         return new ResponseEntity<>(ApiResponse.error("Invalid username or password", "BAD_CREDENTIALS"), HttpStatus.UNAUTHORIZED);

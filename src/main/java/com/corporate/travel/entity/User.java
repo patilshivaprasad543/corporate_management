@@ -1,9 +1,11 @@
 package com.corporate.travel.entity;
 
 import com.corporate.travel.common.BaseEntity;
+import com.corporate.travel.entity.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -42,6 +44,20 @@ public class User extends BaseEntity {
     @Column(name = "two_factor_enabled")
 
     private Boolean twoFactorEnabled = false;
+
+    @Column(name = "employee_id", length = 50)
+    private String employeeId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private UserStatus status = UserStatus.ACTIVE;
+
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -127,6 +143,15 @@ public class User extends BaseEntity {
 
     public void setOrganization(Organization organization) { this.organization = organization; }
 
+    public String getEmployeeId() { return employeeId; }
+    public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
+    public UserStatus getStatus() { return status; }
+    public void setStatus(UserStatus status) { this.status = status; }
+    public LocalDateTime getLastLoginAt() { return lastLoginAt; }
+    public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
+
     public static UserBuilder builder() { return new UserBuilder(); }
 
     public static class UserBuilder {
@@ -140,6 +165,8 @@ public class User extends BaseEntity {
         private Boolean active = true;
         private Boolean emailVerified = true;
         private Boolean twoFactorEnabled = false;
+        private String employeeId;
+        private UserStatus status = UserStatus.ACTIVE;
         private Set<Role> roles = new HashSet<>();
         private Organization organization;
 
@@ -153,6 +180,8 @@ public class User extends BaseEntity {
         public UserBuilder active(Boolean active) { this.active = active; return this; }
         public UserBuilder emailVerified(Boolean emailVerified) { this.emailVerified = emailVerified; return this; }
         public UserBuilder twoFactorEnabled(Boolean twoFactorEnabled) { this.twoFactorEnabled = twoFactorEnabled; return this; }
+        public UserBuilder employeeId(String employeeId) { this.employeeId = employeeId; return this; }
+        public UserBuilder status(UserStatus status) { this.status = status; return this; }
         public UserBuilder roles(Set<Role> roles) { this.roles = roles; return this; }
         public UserBuilder organization(Organization organization) { this.organization = organization; return this; }
 
@@ -168,6 +197,8 @@ public class User extends BaseEntity {
             obj.setActive(this.active);
             obj.setEmailVerified(this.emailVerified);
             obj.setTwoFactorEnabled(this.twoFactorEnabled);
+            obj.setEmployeeId(this.employeeId);
+            obj.setStatus(this.status);
             obj.setRoles(this.roles);
             obj.setOrganization(this.organization);
             return obj;

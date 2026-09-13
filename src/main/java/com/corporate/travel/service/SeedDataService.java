@@ -367,6 +367,7 @@ public class SeedDataService implements CommandLineRunner {
                 .roles(new HashSet<>(Collections.singletonList(role)))
                 .active(true)
                 .emailVerified(true)
+                .status(com.corporate.travel.entity.enums.UserStatus.ACTIVE)
                 .build();
         return userRepository.save(user);
     }

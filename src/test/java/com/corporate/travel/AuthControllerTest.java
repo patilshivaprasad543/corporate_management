@@ -28,6 +28,7 @@ class AuthControllerTest {
         AuthDto.LoginRequest request = AuthDto.LoginRequest.builder()
                 .usernameOrEmail("employee")
                 .password("password123")
+                .portal("EMPLOYEE")
                 .build();
 
         mockMvc.perform(post("/api/auth/login")
@@ -36,6 +37,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
                 .andExpect(jsonPath("$.data.username").value("employee"));
     }
 
@@ -44,6 +46,7 @@ class AuthControllerTest {
         AuthDto.LoginRequest request = AuthDto.LoginRequest.builder()
                 .usernameOrEmail("employee")
                 .password("wrongpassword")
+                .portal("EMPLOYEE")
                 .build();
 
         mockMvc.perform(post("/api/auth/login")
