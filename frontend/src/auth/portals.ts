@@ -1,5 +1,4 @@
 import type { PortalType } from '../types/auth';
-import { } from '../types/auth';
 
 export interface PortalConfig {
   portal: PortalType;
