@@ -46,6 +46,21 @@ public class Organization extends BaseEntity {
 
     private Boolean active = true;
 
+    @Column(name = "registration_number", length = 100)
+    private String registrationNumber;
+
+    @Column(name = "tax_number", length = 100)
+    private String taxNumber;
+
+    @Column(length = 150)
+    private String email;
+
+    @Column(length = 50)
+    private String phone;
+
+    @Column(length = 50)
+    private String timezone = "UTC";
+
 
     public Organization() {}
 
@@ -109,6 +124,17 @@ public class Organization extends BaseEntity {
 
     public void setActive(Boolean active) { this.active = active; }
 
+    public String getRegistrationNumber() { return registrationNumber; }
+    public void setRegistrationNumber(String registrationNumber) { this.registrationNumber = registrationNumber; }
+    public String getTaxNumber() { return taxNumber; }
+    public void setTaxNumber(String taxNumber) { this.taxNumber = taxNumber; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public String getTimezone() { return timezone; }
+    public void setTimezone(String timezone) { this.timezone = timezone; }
+
     public static OrganizationBuilder builder() { return new OrganizationBuilder(); }
 
     public static class OrganizationBuilder {
@@ -124,6 +150,11 @@ public class Organization extends BaseEntity {
         private String currencyCode = "INR";
         private BigDecimal annualTravelBudget = BigDecimal.valueOf(5000000);
         private Boolean active = true;
+        private String registrationNumber;
+        private String taxNumber;
+        private String email;
+        private String phone;
+        private String timezone = "UTC";
 
         public OrganizationBuilder id(Long id) { this.id = id; return this; }
         public OrganizationBuilder name(String name) { this.name = name; return this; }
@@ -137,6 +168,11 @@ public class Organization extends BaseEntity {
         public OrganizationBuilder currencyCode(String currencyCode) { this.currencyCode = currencyCode; return this; }
         public OrganizationBuilder annualTravelBudget(BigDecimal annualTravelBudget) { this.annualTravelBudget = annualTravelBudget; return this; }
         public OrganizationBuilder active(Boolean active) { this.active = active; return this; }
+        public OrganizationBuilder registrationNumber(String registrationNumber) { this.registrationNumber = registrationNumber; return this; }
+        public OrganizationBuilder taxNumber(String taxNumber) { this.taxNumber = taxNumber; return this; }
+        public OrganizationBuilder email(String email) { this.email = email; return this; }
+        public OrganizationBuilder phone(String phone) { this.phone = phone; return this; }
+        public OrganizationBuilder timezone(String timezone) { this.timezone = timezone; return this; }
 
         public Organization build() {
             Organization obj = new Organization();
@@ -152,6 +188,11 @@ public class Organization extends BaseEntity {
             obj.setCurrencyCode(this.currencyCode);
             obj.setAnnualTravelBudget(this.annualTravelBudget);
             obj.setActive(this.active);
+            obj.setRegistrationNumber(this.registrationNumber);
+            obj.setTaxNumber(this.taxNumber);
+            obj.setEmail(this.email);
+            obj.setPhone(this.phone);
+            obj.setTimezone(this.timezone);
             return obj;
         }
     }

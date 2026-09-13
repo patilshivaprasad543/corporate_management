@@ -15,4 +15,5 @@ public interface TravelRequestRepository extends JpaRepository<TravelRequest, Lo
     List<TravelRequest> findByOrganizationIdOrderByCreatedAtDesc(Long organizationId);
     List<TravelRequest> findByDepartmentIdOrderByCreatedAtDesc(Long departmentId);
     List<TravelRequest> findByStatus(RequestStatus status);
+    long countByOrganization_Id(Long organizationId);
 }

@@ -6,8 +6,10 @@ import org.slf4j.LoggerFactory;
 import com.corporate.travel.dto.TravelRequestDto;
 import com.corporate.travel.entity.*;
 import com.corporate.travel.entity.enums.*;
+import com.corporate.travel.exception.ForbiddenException;
 import com.corporate.travel.exception.ResourceNotFoundException;
 import com.corporate.travel.repository.*;
+import com.corporate.travel.security.TenantAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +23,7 @@ import java.util.stream.Collectors;
 public class TravelRequestService {
     private static final Logger log = LoggerFactory.getLogger(TravelRequestService.class);
 
-    public TravelRequestService(TravelRequestRepository requestRepository, UserRepository userRepository, OrganizationRepository organizationRepository, CostCenterRepository costCenterRepository, ApprovalStepRepository approvalStepRepository, PolicyEvaluationService policyEvaluationService, NotificationService notificationService, AuditService auditService) {
+    public TravelRequestService(TravelRequestRepository requestRepository, UserRepository userRepository, OrganizationRepository organizationRepository, CostCenterRepository costCenterRepository, ApprovalStepRepository approvalStepRepository, PolicyEvaluationService policyEvaluationService, NotificationService notificationService, AuditService auditService, TenantAccessService tenantAccessService) {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.organizationRepository = organizationRepository;
@@ -30,6 +32,7 @@ public class TravelRequestService {
         this.policyEvaluationService = policyEvaluationService;
         this.notificationService = notificationService;
         this.auditService = auditService;
+        this.tenantAccessService = tenantAccessService;
     }
 
 
@@ -41,18 +44,26 @@ public class TravelRequestService {
     private final PolicyEvaluationService policyEvaluationService;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    private final TenantAccessService tenantAccessService;
 
     @Transactional
     public TravelRequestDto.Response createRequest(Long userId, TravelRequestDto.CreateRequest dto) {
         User employee = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
-        Organization org = employee.getOrganization() != null ? employee.getOrganization()
-                : organizationRepository.findAll().stream().findFirst().orElseThrow();
+        Organization org = employee.getOrganization();
+        if (org == null) {
+            throw new ForbiddenException("User is not assigned to a company");
+        }
+        tenantAccessService.assertCanAccessOrganization(org.getId());
 
         CostCenter costCenter = null;
         if (dto.getCostCenterId() != null) {
             costCenter = costCenterRepository.findById(dto.getCostCenterId()).orElse(null);
+            if (costCenter != null && costCenter.getOrganization() != null
+                    && !costCenter.getOrganization().getId().equals(org.getId())) {
+                throw new ForbiddenException("Cost center does not belong to your company");
+            }
         }
 
         String reqNum = "TR-" + (1000 + (int)(Math.random() * 9000));
@@ -150,15 +161,20 @@ public class TravelRequestService {
 
     @Transactional(readOnly = true)
     public List<TravelRequestDto.Response> getAllRequests() {
-        return requestRepository.findAll().stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        Long scope = tenantAccessService.resolveOrganizationScope();
+        List<TravelRequest> requests = scope == null
+                ? requestRepository.findAll()
+                : requestRepository.findByOrganizationIdOrderByCreatedAtDesc(scope);
+        return requests.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public TravelRequestDto.Response getRequestById(Long id) {
         TravelRequest req = requestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("TravelRequest", "id", id));
+        if (req.getOrganization() != null) {
+            tenantAccessService.assertCanAccessResource(req.getOrganization().getId());
+        }
         return mapToResponse(req);
     }
 

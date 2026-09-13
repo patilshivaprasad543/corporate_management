@@ -15,4 +15,5 @@ public interface ExpenseReportRepository extends JpaRepository<ExpenseReport, Lo
     List<ExpenseReport> findByDepartmentId(Long departmentId);
     List<ExpenseReport> findByStatus(ExpenseStatus status);
     Optional<ExpenseReport> findByTravelRequestId(Long travelRequestId);
+    List<ExpenseReport> findByEmployee_Organization_IdOrderByCreatedAtDesc(Long organizationId);
 }
