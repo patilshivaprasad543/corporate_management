@@ -23,13 +23,15 @@ import java.util.stream.Collectors;
 public class TravelRequestService {
     private static final Logger log = LoggerFactory.getLogger(TravelRequestService.class);
 
-    public TravelRequestService(TravelRequestRepository requestRepository, UserRepository userRepository, OrganizationRepository organizationRepository, CostCenterRepository costCenterRepository, ApprovalStepRepository approvalStepRepository, PolicyEvaluationService policyEvaluationService, NotificationService notificationService, AuditService auditService, TenantAccessService tenantAccessService) {
+    public TravelRequestService(TravelRequestRepository requestRepository, UserRepository userRepository, OrganizationRepository organizationRepository, CostCenterRepository costCenterRepository, ApprovalStepRepository approvalStepRepository, PolicyEvaluationService policyEvaluationService, PolicyViolationService policyViolationService, TravelPolicyRepository travelPolicyRepository, NotificationService notificationService, AuditService auditService, TenantAccessService tenantAccessService) {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.organizationRepository = organizationRepository;
         this.costCenterRepository = costCenterRepository;
         this.approvalStepRepository = approvalStepRepository;
         this.policyEvaluationService = policyEvaluationService;
+        this.policyViolationService = policyViolationService;
+        this.travelPolicyRepository = travelPolicyRepository;
         this.notificationService = notificationService;
         this.auditService = auditService;
         this.tenantAccessService = tenantAccessService;
@@ -42,6 +44,8 @@ public class TravelRequestService {
     private final CostCenterRepository costCenterRepository;
     private final ApprovalStepRepository approvalStepRepository;
     private final PolicyEvaluationService policyEvaluationService;
+    private final PolicyViolationService policyViolationService;
+    private final TravelPolicyRepository travelPolicyRepository;
     private final NotificationService notificationService;
     private final AuditService auditService;
     private final TenantAccessService tenantAccessService;
@@ -103,6 +107,11 @@ public class TravelRequestService {
                 .build();
 
         TravelRequest saved = requestRepository.save(request);
+
+        TravelPolicy activePolicy = travelPolicyRepository.findFirstByOrganizationIdAndActiveTrue(org.getId()).orElse(null);
+        if (!eval.violations.isEmpty()) {
+            policyViolationService.persistViolations(org, activePolicy, employee, saved, eval.violations);
+        }
 
         // Build Approval Steps
         List<ApprovalStep> steps = new ArrayList<>();

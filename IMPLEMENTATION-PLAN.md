@@ -105,13 +105,30 @@
 
 ---
 
-## Phase 4 — Company Module (Next)
+## Phase 4 — Company Module ✅
 
-- `CompanyController` / `CompanyService`
-- Super Admin company CRUD APIs
-- `CompanyContext` filter from JWT
-- `TenantAwareRepository` base or spec filters
-- React Super Admin company management UI
+**Delivered:**
+- [x] `CompanyController` / `CompanyService` — full CRUD at `/api/companies`
+- [x] Super Admin: create, update, activate/deactivate companies + system stats
+- [x] `TenantAccessService` — company isolation on travel, expense, booking services
+- [x] Organization extended fields (registration, tax, email, phone, timezone)
+- [x] Flyway `V6__organization_extended_fields.sql`
+- [x] Fixed seed order: `SeedDataService` (50) → `PermissionSeedService` (150)
+- [x] React Super Admin dashboard with live stats + company management UI
+- [x] `CompanySecurityTest` — 6 security scenarios (46 tests total)
+
+---
+
+## Phase 5 — Travel Policy Engine ✅
+
+**Delivered:**
+- [x] `PolicyViolation` entity + `V7__policy_violations.sql` migration
+- [x] `PolicyEvaluationService` — flight/hotel/transport budgets, cabin class, hotel category, advance booking, approval thresholds
+- [x] `PolicyController` / `TravelPolicyService` — CRUD at `/api/policies`, evaluate preview, violation listing
+- [x] `PolicyViolationService` — persist violations on travel request creation
+- [x] `TravelPolicy` extended fields (hotel room limit, transport cap, international finance flag)
+- [x] `PolicyControllerTest` + enhanced `PolicyEvaluationServiceTest` (49 tests total)
+- [x] Frontend: Travel Admin policies page with policy list, violation log, evaluate simulator
 
 ---
 

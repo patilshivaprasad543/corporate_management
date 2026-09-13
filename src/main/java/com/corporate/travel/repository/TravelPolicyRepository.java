@@ -10,5 +10,6 @@ import java.util.Optional;
 @Repository
 public interface TravelPolicyRepository extends JpaRepository<TravelPolicy, Long> {
     List<TravelPolicy> findByOrganizationIdAndActiveTrue(Long organizationId);
+    List<TravelPolicy> findByOrganizationId(Long organizationId);
     Optional<TravelPolicy> findFirstByOrganizationIdAndActiveTrue(Long organizationId);
 }

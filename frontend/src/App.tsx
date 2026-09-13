@@ -6,6 +6,7 @@ import PortalLoginPage from './components/PortalLoginPage';
 import RoleDashboard from './pages/RoleDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import CompaniesPage from './pages/CompaniesPage';
+import TravelAdminPoliciesPage from './pages/TravelAdminPoliciesPage';
 import RegisterPage from './pages/RegisterPage';
 import VerifyOtpPage from './pages/VerifyOtpPage';
 
@@ -27,6 +28,7 @@ function App() {
           {/* Travel Admin */}
           <Route path="/travel-admin/login" element={<LoginRoute config={PORTALS.TRAVEL_ADMIN}><PortalLoginPage config={PORTALS.TRAVEL_ADMIN} /></LoginRoute>} />
           <Route path="/travel-admin/dashboard" element={<PortalRoute portal="TRAVEL_ADMIN"><RoleDashboard config={PORTALS.TRAVEL_ADMIN} navItems={['Dashboard', 'Bookings', 'Policies', 'Vendors', 'Reports']} /></PortalRoute>} />
+          <Route path="/travel-admin/policies" element={<PortalRoute portal="TRAVEL_ADMIN"><TravelAdminPoliciesPage /></PortalRoute>} />
 
           {/* Finance */}
           <Route path="/finance/login" element={<LoginRoute config={PORTALS.FINANCE}><PortalLoginPage config={PORTALS.FINANCE} /></LoginRoute>} />

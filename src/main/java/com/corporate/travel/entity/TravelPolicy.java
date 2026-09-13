@@ -72,6 +72,15 @@ public class TravelPolicy extends BaseEntity {
 
     private Boolean active = true;
 
+    @Column(name = "hotel_room_limit")
+    private Integer hotelRoomLimit = 1;
+
+    @Column(name = "max_transport_amount", precision = 12, scale = 2)
+    private BigDecimal maxTransportAmount = BigDecimal.valueOf(5000);
+
+    @Column(name = "international_requires_finance")
+    private Boolean internationalRequiresFinance = true;
+
 
     public TravelPolicy() {}
 
@@ -157,6 +166,13 @@ public class TravelPolicy extends BaseEntity {
 
     public void setActive(Boolean active) { this.active = active; }
 
+    public Integer getHotelRoomLimit() { return hotelRoomLimit; }
+    public void setHotelRoomLimit(Integer hotelRoomLimit) { this.hotelRoomLimit = hotelRoomLimit; }
+    public BigDecimal getMaxTransportAmount() { return maxTransportAmount; }
+    public void setMaxTransportAmount(BigDecimal maxTransportAmount) { this.maxTransportAmount = maxTransportAmount; }
+    public Boolean getInternationalRequiresFinance() { return internationalRequiresFinance; }
+    public void setInternationalRequiresFinance(Boolean internationalRequiresFinance) { this.internationalRequiresFinance = internationalRequiresFinance; }
+
     public static TravelPolicyBuilder builder() { return new TravelPolicyBuilder(); }
 
     public static class TravelPolicyBuilder {
@@ -176,6 +192,9 @@ public class TravelPolicy extends BaseEntity {
         private BigDecimal financeApprovalThreshold = BigDecimal.valueOf(25000);
         private BigDecimal adminApprovalThreshold = BigDecimal.valueOf(100000);
         private Boolean active = true;
+        private Integer hotelRoomLimit = 1;
+        private BigDecimal maxTransportAmount = BigDecimal.valueOf(5000);
+        private Boolean internationalRequiresFinance = true;
 
         public TravelPolicyBuilder id(Long id) { this.id = id; return this; }
         public TravelPolicyBuilder name(String name) { this.name = name; return this; }
@@ -193,6 +212,9 @@ public class TravelPolicy extends BaseEntity {
         public TravelPolicyBuilder financeApprovalThreshold(BigDecimal financeApprovalThreshold) { this.financeApprovalThreshold = financeApprovalThreshold; return this; }
         public TravelPolicyBuilder adminApprovalThreshold(BigDecimal adminApprovalThreshold) { this.adminApprovalThreshold = adminApprovalThreshold; return this; }
         public TravelPolicyBuilder active(Boolean active) { this.active = active; return this; }
+        public TravelPolicyBuilder hotelRoomLimit(Integer hotelRoomLimit) { this.hotelRoomLimit = hotelRoomLimit; return this; }
+        public TravelPolicyBuilder maxTransportAmount(BigDecimal maxTransportAmount) { this.maxTransportAmount = maxTransportAmount; return this; }
+        public TravelPolicyBuilder internationalRequiresFinance(Boolean internationalRequiresFinance) { this.internationalRequiresFinance = internationalRequiresFinance; return this; }
 
         public TravelPolicy build() {
             TravelPolicy obj = new TravelPolicy();
@@ -212,6 +234,9 @@ public class TravelPolicy extends BaseEntity {
             obj.setFinanceApprovalThreshold(this.financeApprovalThreshold);
             obj.setAdminApprovalThreshold(this.adminApprovalThreshold);
             obj.setActive(this.active);
+            obj.setHotelRoomLimit(this.hotelRoomLimit);
+            obj.setMaxTransportAmount(this.maxTransportAmount);
+            obj.setInternationalRequiresFinance(this.internationalRequiresFinance);
             return obj;
         }
     }
