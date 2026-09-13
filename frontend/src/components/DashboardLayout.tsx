@@ -1,5 +1,11 @@
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import type { PortalConfig } from '../auth/portals';
+
+export interface NavItem {
+  label: string;
+  path: string;
+}
 
 export default function DashboardLayout({
   config,
@@ -7,9 +13,10 @@ export default function DashboardLayout({
   children,
 }: {
   config: PortalConfig;
-  navItems: string[];
+  navItems: (string | NavItem)[];
   children: React.ReactNode;
 }) {
+  const location = useLocation();
   const { logout } = useAuth();
 
   const handleLogout = async () => {
@@ -25,14 +32,20 @@ export default function DashboardLayout({
           <p className="text-slate-400 text-sm">{config.subtitle}</p>
         </div>
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => (
-            <div
-              key={item}
-              className={`px-3 py-2 rounded-lg text-sm ${item === 'Dashboard' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-            >
-              {item}
-            </div>
-          ))}
+          {navItems.map((item) => {
+            const label = typeof item === 'string' ? item : item.label;
+            const path = typeof item === 'string' ? config.dashboardPath : item.path;
+            const active = location.pathname === path;
+            return (
+              <Link
+                key={label}
+                to={path}
+                className={`block px-3 py-2 rounded-lg text-sm ${active ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              >
+                {label}
+              </Link>
+            );
+          })}
         </nav>
         <div className="p-4 border-t border-slate-700">
           <button

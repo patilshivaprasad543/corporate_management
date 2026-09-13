@@ -7,8 +7,10 @@ import com.corporate.travel.dto.BookingDto;
 import com.corporate.travel.entity.*;
 import com.corporate.travel.entity.enums.*;
 import com.corporate.travel.exception.BadRequestException;
+import com.corporate.travel.exception.ForbiddenException;
 import com.corporate.travel.exception.ResourceNotFoundException;
 import com.corporate.travel.repository.*;
+import com.corporate.travel.security.TenantAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +26,7 @@ import java.util.stream.Collectors;
 public class BookingService {
     private static final Logger log = LoggerFactory.getLogger(BookingService.class);
 
-    public BookingService(BookingRepository bookingRepository, TravelRequestRepository requestRepository, UserRepository userRepository, OrganizationRepository organizationRepository, ItineraryRepository itineraryRepository, TravelWalletRepository walletRepository, PaymentTransactionRepository paymentRepository, NotificationService notificationService, AuditService auditService) {
+    public BookingService(BookingRepository bookingRepository, TravelRequestRepository requestRepository, UserRepository userRepository, OrganizationRepository organizationRepository, ItineraryRepository itineraryRepository, TravelWalletRepository walletRepository, PaymentTransactionRepository paymentRepository, NotificationService notificationService, AuditService auditService, TenantAccessService tenantAccessService) {
         this.bookingRepository = bookingRepository;
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
@@ -34,6 +36,7 @@ public class BookingService {
         this.paymentRepository = paymentRepository;
         this.notificationService = notificationService;
         this.auditService = auditService;
+        this.tenantAccessService = tenantAccessService;
     }
 
 
@@ -46,23 +49,30 @@ public class BookingService {
     private final PaymentTransactionRepository paymentRepository;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    private final TenantAccessService tenantAccessService;
 
     @Transactional
     public BookingDto.Response createBooking(Long userId, BookingDto.CreateBookingRequest dto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
+        Organization org = user.getOrganization();
+        if (org == null) {
+            throw new ForbiddenException("User is not assigned to a company");
+        }
+        tenantAccessService.assertCanAccessOrganization(org.getId());
+
         TravelRequest request = null;
         if (dto.getTravelRequestId() != null) {
             request = requestRepository.findById(dto.getTravelRequestId()).orElse(null);
             if (request != null) {
+                if (request.getOrganization() != null) {
+                    tenantAccessService.assertCanAccessResource(request.getOrganization().getId());
+                }
                 request.setStatus(RequestStatus.CONFIRMED);
                 requestRepository.save(request);
             }
         }
-
-        Organization org = user.getOrganization() != null ? user.getOrganization()
-                : organizationRepository.findAll().stream().findFirst().orElseThrow();
 
         String pnr = "PNR" + (100000 + (int)(Math.random() * 900000));
         String ref = "BK-" + (1000 + (int)(Math.random() * 9000));
@@ -210,9 +220,11 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<BookingDto.Response> getAllBookings() {
-        return bookingRepository.findAll().stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        Long scope = tenantAccessService.resolveOrganizationScope();
+        List<Booking> bookings = scope == null
+                ? bookingRepository.findAll()
+                : bookingRepository.findByOrganizationIdOrderByCreatedAtDesc(scope);
+        return bookings.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     public BookingDto.Response mapToResponse(Booking b) {

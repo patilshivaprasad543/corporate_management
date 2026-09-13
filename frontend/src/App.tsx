@@ -4,6 +4,8 @@ import { LoginRoute, PortalRoute } from './auth/guards';
 import { PORTALS, EMPLOYEE_NAV, MANAGER_NAV } from './auth/portals';
 import PortalLoginPage from './components/PortalLoginPage';
 import RoleDashboard from './pages/RoleDashboard';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import CompaniesPage from './pages/CompaniesPage';
 import RegisterPage from './pages/RegisterPage';
 import VerifyOtpPage from './pages/VerifyOtpPage';
 
@@ -40,7 +42,8 @@ function App() {
 
           {/* Super Admin */}
           <Route path="/super-admin/login" element={<LoginRoute config={PORTALS.SUPER_ADMIN}><PortalLoginPage config={PORTALS.SUPER_ADMIN} /></LoginRoute>} />
-          <Route path="/super-admin/dashboard" element={<PortalRoute portal="SUPER_ADMIN"><RoleDashboard config={PORTALS.SUPER_ADMIN} navItems={['Dashboard', 'Organizations', 'Users', 'System Config', 'Audit Logs']} /></PortalRoute>} />
+          <Route path="/super-admin/dashboard" element={<PortalRoute portal="SUPER_ADMIN"><SuperAdminDashboard /></PortalRoute>} />
+          <Route path="/super-admin/companies" element={<PortalRoute portal="SUPER_ADMIN"><CompaniesPage /></PortalRoute>} />
 
           {/* Registration */}
           <Route path="/register" element={<RegisterPage />} />

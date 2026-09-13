@@ -7,6 +7,7 @@ import com.corporate.travel.entity.*;
 import com.corporate.travel.entity.enums.*;
 import com.corporate.travel.repository.*;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
+@Order(50)
 public class SeedDataService implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(SeedDataService.class);
 

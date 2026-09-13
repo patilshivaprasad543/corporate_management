@@ -17,7 +17,7 @@
 | 1 | Project Foundation | ✅ Complete | cursor/cbtms-phases-0-2-8bcd |
 | 2 | Database + Flyway + JPA | ✅ Complete | cursor/cbtms-phases-0-2-8bcd |
 | 3 | Auth + OTP + JWT + RBAC (enhance) | ✅ Complete | cursor/cbtms-phase-3-auth-8bcd |
-| 4 | Company + Department + Employee | ⏳ Pending | — |
+| 4 | Company + Department + Employee | ✅ Complete | cursor/cbtms-phase-4-company-8bcd |
 | 5 | Travel Policy Engine | ⏳ Pending | — |
 | 6 | Travel Request + State Machine | ⏳ Pending | — |
 | 7 | Approval Engine | ⏳ Pending | — |

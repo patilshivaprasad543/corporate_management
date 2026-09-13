@@ -17,7 +17,7 @@ import java.util.Arrays;
 import java.util.*;
 
 @Service
-@Order(100)
+@Order(150)
 public class PermissionSeedService implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(PermissionSeedService.class);
@@ -77,6 +77,7 @@ public class PermissionSeedService implements CommandLineRunner {
         ));
 
         map.put(RoleType.ROLE_FINANCE, Set.of(
+                PermissionType.TRAVEL_REQUEST_VIEW,
                 PermissionType.EXPENSE_VIEW, PermissionType.EXPENSE_APPROVE,
                 PermissionType.REIMBURSEMENT_VIEW, PermissionType.REIMBURSEMENT_PROCESS,
                 PermissionType.PAYMENT_VIEW, PermissionType.PAYMENT_PROCESS,

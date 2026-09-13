@@ -8,8 +8,10 @@ import com.corporate.travel.entity.*;
 import com.corporate.travel.entity.enums.ExpenseCategory;
 import com.corporate.travel.entity.enums.ExpenseStatus;
 import com.corporate.travel.entity.enums.NotificationType;
+import com.corporate.travel.exception.ForbiddenException;
 import com.corporate.travel.exception.ResourceNotFoundException;
 import com.corporate.travel.repository.*;
+import com.corporate.travel.security.TenantAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,13 +25,14 @@ import java.util.stream.Collectors;
 public class ExpenseService {
     private static final Logger log = LoggerFactory.getLogger(ExpenseService.class);
 
-    public ExpenseService(ExpenseReportRepository expenseReportRepository, UserRepository userRepository, TravelRequestRepository travelRequestRepository, TravelWalletRepository walletRepository, NotificationService notificationService, AuditService auditService) {
+    public ExpenseService(ExpenseReportRepository expenseReportRepository, UserRepository userRepository, TravelRequestRepository travelRequestRepository, TravelWalletRepository walletRepository, NotificationService notificationService, AuditService auditService, TenantAccessService tenantAccessService) {
         this.expenseReportRepository = expenseReportRepository;
         this.userRepository = userRepository;
         this.travelRequestRepository = travelRequestRepository;
         this.walletRepository = walletRepository;
         this.notificationService = notificationService;
         this.auditService = auditService;
+        this.tenantAccessService = tenantAccessService;
     }
 
 
@@ -39,15 +42,22 @@ public class ExpenseService {
     private final TravelWalletRepository walletRepository;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    private final TenantAccessService tenantAccessService;
 
     @Transactional
     public ExpenseDto.ReportResponse createExpenseReport(Long userId, ExpenseDto.CreateReportRequest dto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        if (user.getOrganization() != null) {
+            tenantAccessService.assertCanAccessOrganization(user.getOrganization().getId());
+        }
 
         TravelRequest req = null;
         if (dto.getTravelRequestId() != null) {
             req = travelRequestRepository.findById(dto.getTravelRequestId()).orElse(null);
+            if (req != null && req.getOrganization() != null) {
+                tenantAccessService.assertCanAccessResource(req.getOrganization().getId());
+            }
         }
 
         String repNum = "EXP-" + (1000 + (int)(Math.random() * 9000));
@@ -142,6 +152,7 @@ public class ExpenseService {
     public ExpenseDto.ReportResponse approveExpenseReport(Long reportId, Long financeUserId, boolean approve) {
         ExpenseReport report = expenseReportRepository.findById(reportId)
                 .orElseThrow(() -> new ResourceNotFoundException("ExpenseReport", "id", reportId));
+        assertExpenseReportAccess(report);
 
         if (approve) {
             report.setStatus(ExpenseStatus.APPROVED);
@@ -171,9 +182,17 @@ public class ExpenseService {
 
     @Transactional(readOnly = true)
     public List<ExpenseDto.ReportResponse> getAllReports() {
-        return expenseReportRepository.findAll().stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        Long scope = tenantAccessService.resolveOrganizationScope();
+        List<ExpenseReport> reports = scope == null
+                ? expenseReportRepository.findAll()
+                : expenseReportRepository.findByEmployee_Organization_IdOrderByCreatedAtDesc(scope);
+        return reports.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    private void assertExpenseReportAccess(ExpenseReport report) {
+        if (report.getEmployee() != null && report.getEmployee().getOrganization() != null) {
+            tenantAccessService.assertCanAccessResource(report.getEmployee().getOrganization().getId());
+        }
     }
 
     public ExpenseDto.ReportResponse mapToResponse(ExpenseReport r) {
