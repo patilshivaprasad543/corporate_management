@@ -1,0 +1,22 @@
+{
+  "name": "CorporateTravel360",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "user": "ubuntu",
+  "install": "./.cursor/scripts/cloud-agent-install.sh",
+  "start": "./.cursor/scripts/cloud-agent-start.sh",
+  "terminals": [
+    {
+      "name": "spring-boot",
+      "command": "SPRING_DATASOURCE_URL='jdbc:h2:mem:corporate;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE' SPRING_DATASOURCE_USERNAME=sa SPRING_DATASOURCE_PASSWORD= SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver SPRING_JPA_HIBERNATE_DDL_AUTO=update JWT_SECRET='AeroCorpTravelSecretKeyForJWTAuthentication2026EnterpriseSecuredSignatureKey9841' ./gradlew bootRun --no-daemon"
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 8080
+    }
+  ]
+}
