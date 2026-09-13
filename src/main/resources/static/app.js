@@ -4,25 +4,11 @@
 // =========================================================================
 
 const STATE = {
-  currentRole: 'ROLE_EMPLOYEE',
+  currentRole: localStorage.getItem('corporate_user_role') || null,
   token: localStorage.getItem('corporate_jwt_token') || '',
-  currentUser: {
-    id: 5,
-    name: 'Priya Sharma',
-    email: 'traveler@acmetech.com',
-    role: 'ROLE_EMPLOYEE',
-    designation: 'Senior Software Architect',
-    department: 'Engineering & Innovation',
-    avatar: 'PS',
-    wallet: {
-      allocated: 350000,
-      spent: 25800,
-      pending: 3200,
-      remaining: 324200
-    }
-  },
-  showAllNavModules: true,
-  activeTab: 'dashboard',
+  isAuthenticated: !!(localStorage.getItem('corporate_jwt_token') && localStorage.getItem('corporate_user_role')),
+  currentUser: { name: 'Guest Traveler', designation: 'Please Authenticate', avatar: '🔒' },
+  activeTab: (localStorage.getItem('corporate_jwt_token') && localStorage.getItem('corporate_user_role')) ? 'dashboard' : 'login-portal',
   currency: 'INR',
   currencySymbol: '₹',
   exchangeRates: { INR: 1, USD: 0.012, EUR: 0.011, GBP: 0.0095 },
@@ -195,16 +181,32 @@ const FLOW_STATE = {
 // INITIALIZATION
 // =========================================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  renderNavigation();
-  updateTopStripActiveState(STATE.activeTab);
-  
-  // Authenticate default employee initially if no token
-  if (!STATE.token) {
-    await loginAsRole('ROLE_EMPLOYEE', false);
+  const savedToken = localStorage.getItem('corporate_jwt_token');
+  const savedRole = localStorage.getItem('corporate_user_role');
+
+  if (savedToken && savedRole && DEMO_USERS[savedRole]) {
+    STATE.token = savedToken;
+    STATE.isAuthenticated = true;
+    STATE.currentRole = savedRole;
+    STATE.currentUser = DEMO_USERS[savedRole];
+    STATE.activeTab = 'dashboard';
+    updateUserProfileHeader();
+    renderNavigation();
+    updateTopStripActiveState('dashboard');
+    await fetchInitialData();
+    loadActiveTab();
+  } else {
+    // RESTRICTION LOGIN: Do NOT log in automatically! All modules locked!
+    STATE.token = '';
+    STATE.isAuthenticated = false;
+    STATE.currentRole = null;
+    STATE.currentUser = { name: 'Guest Traveler', designation: 'Please Authenticate', avatar: '🔒' };
+    STATE.activeTab = 'login-portal';
+    updateUserProfileHeader();
+    renderNavigation();
+    updateTopStripActiveState('login-portal');
+    loadLoginPortalTab();
   }
-  
-  await fetchInitialData();
-  loadActiveTab();
   safeCreateIcons();
 });
 
@@ -232,6 +234,15 @@ async function fetchInitialData() {
 // NAVIGATION & TABS SWITCHING
 // =========================================================================
 function navigateToTab(tabId) {
+  if (!STATE.isAuthenticated && tabId !== 'login-portal') {
+    showToast(`🔒 Access Restricted: Please log in to unlock the '${tabId}' module.`, 'warning');
+    STATE.activeTab = 'login-portal';
+    renderNavigation();
+    updateTopStripActiveState('login-portal');
+    loadActiveTab();
+    return;
+  }
+
   const roleKey = STATE.currentRole || 'ROLE_EMPLOYEE';
   const allowed = (ROLE_NAVS[roleKey] || ROLE_NAVS.ROLE_EMPLOYEE).map(item => item.id);
   
@@ -249,11 +260,25 @@ function navigateToTab(tabId) {
 
 function updateTopStripActiveState(tabId) {
   try {
+    const stripRoleName = document.getElementById('stripRoleName');
+
+    if (!STATE.isAuthenticated) {
+      if (stripRoleName) stripRoleName.textContent = 'AUTHENTICATION REQUIRED';
+      document.querySelectorAll('.strip-btn').forEach(btn => {
+        if (btn.id === 'strip-login-portal') {
+          btn.style.display = 'inline-flex';
+          btn.className = 'strip-btn px-4 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-bold shadow-lg shadow-indigo-500/30 flex items-center gap-1.5 shrink-0 transition text-xs';
+        } else {
+          btn.style.display = 'none'; // Lock all other module buttons!
+        }
+      });
+      return;
+    }
+
     const roleKey = STATE.currentRole || 'ROLE_EMPLOYEE';
     const allowed = (ROLE_NAVS[roleKey] || ROLE_NAVS.ROLE_EMPLOYEE).map(item => item.id);
     
     // Update role badge in top strip
-    const stripRoleName = document.getElementById('stripRoleName');
     if (stripRoleName) {
       stripRoleName.textContent = `${roleKey.replace('ROLE_', '').replace('_', ' ')} PORTAL`;
     }
@@ -277,6 +302,30 @@ function updateTopStripActiveState(tabId) {
 function renderNavigation() {
   const navContainer = document.getElementById('navContainer');
   if (!navContainer) return;
+
+  if (!STATE.isAuthenticated) {
+    navContainer.innerHTML = `
+      <div class="px-2 py-1 mb-2 text-[10px] font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+        <i data-lucide="lock" class="w-3 h-3 text-rose-400"></i> ACCESS RESTRICTED
+      </div>
+      <button onclick="navigateToTab('login-portal')" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg shadow-indigo-600/30">
+        <div class="flex items-center gap-3">
+          <i data-lucide="shield-check" class="w-4 h-4"></i>
+          <span>🔐 Login & Roles Portal</span>
+        </div>
+        <span class="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-white text-indigo-900">Sign In</span>
+      </button>
+
+      <div class="p-3.5 mt-4 rounded-xl bg-dark-900/90 border border-slate-800 text-slate-400 text-center">
+        <i data-lucide="shield-alert" class="w-6 h-6 text-amber-400 mx-auto mb-1.5"></i>
+        <p class="text-[11px] font-bold text-slate-300">Modules Locked</p>
+        <p class="text-[10px] text-slate-500 mt-1">Please sign in to unlock your role-authorized workspace.</p>
+      </div>
+    `;
+    safeCreateIcons();
+    return;
+  }
+
   const roleKey = STATE.currentRole || 'ROLE_EMPLOYEE';
   const items = ROLE_NAVS[roleKey] || ROLE_NAVS.ROLE_EMPLOYEE;
   const roleName = roleKey.replace('ROLE_', '').replace('_', ' ');
@@ -298,6 +347,13 @@ function renderNavigation() {
         ${item.badge ? `<span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500 text-dark-900">${item.badge}</span>` : ''}
       </button>
     `).join('')}
+
+    <div class="pt-4 mt-4 border-t border-slate-800">
+      <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 text-xs font-bold transition">
+        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+        <span>Lock Session / Logout</span>
+      </button>
+    </div>
   `;
 
   safeCreateIcons();
@@ -473,43 +529,77 @@ async function loginAsRole(roleKey, showNotification = true) {
 
     if (res && res.data && res.data.accessToken) {
       STATE.token = res.data.accessToken;
+      STATE.isAuthenticated = true;
       localStorage.setItem('corporate_jwt_token', res.data.accessToken);
+      localStorage.setItem('corporate_user_role', roleKey);
     }
   } catch (err) {
     console.warn('Login API call warning:', err);
   }
 
+  STATE.isAuthenticated = true;
   STATE.currentRole = roleKey;
   STATE.currentUser = user;
+  localStorage.setItem('corporate_user_role', roleKey);
 
   // Enforce role-based tab access
   const allowed = (ROLE_NAVS[roleKey] || ROLE_NAVS.ROLE_EMPLOYEE).map(i => i.id);
-  if (!allowed.includes(STATE.activeTab)) {
-    STATE.activeTab = allowed.includes('dashboard') ? 'dashboard' : (allowed[0] || 'login-portal');
+  if (!allowed.includes(STATE.activeTab) || STATE.activeTab === 'login-portal') {
+    STATE.activeTab = allowed.includes('dashboard') ? 'dashboard' : (allowed[0] || 'dashboard');
   }
 
-  const nameEl = document.getElementById('userNameDisplay');
-  const roleEl = document.getElementById('userRoleBadge');
-  const avatarEl = document.getElementById('userAvatar');
-  const roleSel = document.getElementById('roleSelector');
-
-  if (nameEl) nameEl.textContent = user.name;
-  if (roleEl) roleEl.textContent = user.designation;
-  if (avatarEl) avatarEl.textContent = user.avatar;
-  if (roleSel) roleSel.value = roleKey;
-
+  updateUserProfileHeader();
   updateWalletDisplay();
   renderNavigation();
   updateTopStripActiveState(STATE.activeTab);
+  loadActiveTab();
 
   if (showNotification) {
-    showToast(`Active Portal: ${user.name} (${roleKey.replace('ROLE_', '')}) — ${allowed.length} modules accessible.`);
+    showToast(`🔓 Unlocked ${user.name}'s portal (${roleKey.replace('ROLE_', '')}) — ${allowed.length} modules accessible.`);
   }
 }
 
 async function switchDemoRole(roleKey) {
   await loginAsRole(roleKey, true);
-  loadActiveTab();
+}
+
+function updateUserProfileHeader() {
+  const nameEl = document.getElementById('userNameDisplay');
+  const roleEl = document.getElementById('userRoleBadge');
+  const avatarEl = document.getElementById('userAvatar');
+  const roleSel = document.getElementById('roleSelector');
+  const logoutBtn = document.getElementById('headerLogoutBtn');
+
+  if (STATE.isAuthenticated && STATE.currentUser) {
+    if (nameEl) nameEl.textContent = STATE.currentUser.name;
+    if (roleEl) roleEl.textContent = STATE.currentUser.designation;
+    if (avatarEl) avatarEl.textContent = STATE.currentUser.avatar;
+    if (roleSel) roleSel.value = STATE.currentRole || 'ROLE_EMPLOYEE';
+    if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+  } else {
+    if (nameEl) nameEl.textContent = 'Sign In Required';
+    if (roleEl) roleEl.textContent = 'Modules Restricted';
+    if (avatarEl) avatarEl.textContent = '🔒';
+    if (roleSel) roleSel.value = 'ROLE_EMPLOYEE';
+    if (logoutBtn) logoutBtn.style.display = 'none';
+  }
+}
+
+function handleLogout() {
+  STATE.token = '';
+  STATE.isAuthenticated = false;
+  STATE.currentRole = null;
+  STATE.currentUser = { name: 'Guest Traveler', designation: 'Please Authenticate', avatar: '🔒' };
+  localStorage.removeItem('corporate_jwt_token');
+  localStorage.removeItem('corporate_user_role');
+  
+  STATE.activeTab = 'login-portal';
+  updateUserProfileHeader();
+  renderNavigation();
+  updateTopStripActiveState('login-portal');
+  loadLoginPortalTab();
+  
+  showToast('🔒 Logged out. All platform modules are now locked.', 'info');
 }
 
 function switchTravelMode(isPersonal) {
@@ -2738,3 +2828,4 @@ window.filterRequestsTable = filterRequestsTable;
 window.executeAiQuery = executeAiQuery;
 window.sendAiPrompt = sendAiPrompt;
 window.exportAnalyticsCsv = exportAnalyticsCsv;
+window.handleLogout = handleLogout;

@@ -159,7 +159,7 @@
       </button>
 
       <!-- User Avatar / Click to Login or Switch -->
-      <div onclick="openLoginPortalModal()" class="flex items-center gap-2.5 pl-2 border-l border-slate-800 cursor-pointer hover:opacity-80 transition" title="Click to open Login Portal / Switch Profile">
+      <div onclick="navigateToTab('login-portal')" class="flex items-center gap-2.5 pl-2 border-l border-slate-800 cursor-pointer hover:opacity-80 transition" title="Click to open Login Portal / Switch Profile">
         <div id="userAvatar" class="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white font-bold text-xs shadow-md">
           PS
         </div>
@@ -168,6 +168,12 @@
           <p id="userRoleBadge" class="text-[10px] text-emerald-400 font-semibold">Sr. Architect (Engineering)</p>
         </div>
       </div>
+
+      <!-- Logout Button (Only visible when authenticated) -->
+      <button id="headerLogoutBtn" onclick="handleLogout()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 text-xs font-bold transition shadow-sm" title="Lock session and log out">
+        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+        <span>Logout</span>
+      </button>
     </div>
   </header>
 
