@@ -19,6 +19,7 @@ public class UserPrincipal implements UserDetails {
     private String password;
     private String fullName;
     private Long organizationId;
+    private boolean enabled = true;
     private Collection<? extends GrantedAuthority> authorities;
 
     public UserPrincipal() {}
@@ -38,7 +39,12 @@ public class UserPrincipal implements UserDetails {
                 .map(role -> new SimpleGrantedAuthority(role.getName().name()))
                 .collect(Collectors.toList());
 
-        return new UserPrincipal(
+        boolean accountEnabled = Boolean.TRUE.equals(user.getActive())
+                && Boolean.TRUE.equals(user.getEmailVerified())
+                && user.getStatus() != com.corporate.travel.entity.enums.UserStatus.SUSPENDED
+                && user.getStatus() != com.corporate.travel.entity.enums.UserStatus.DEACTIVATED;
+
+        UserPrincipal principal = new UserPrincipal(
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
@@ -47,6 +53,8 @@ public class UserPrincipal implements UserDetails {
                 user.getOrganization() != null ? user.getOrganization().getId() : null,
                 authorities
         );
+        principal.setEnabled(accountEnabled);
+        return principal;
     }
 
     public Long getId() { return id; }
@@ -82,8 +90,10 @@ public class UserPrincipal implements UserDetails {
     @Override
     public boolean isCredentialsNonExpired() { return true; }
 
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
     @Override
-    public boolean isEnabled() { return true; }
+    public boolean isEnabled() { return enabled; }
 
     public static UserPrincipalBuilder builder() { return new UserPrincipalBuilder(); }
 

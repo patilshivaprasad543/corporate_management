@@ -29,6 +29,7 @@ class TravelWorkflowIntegrationTest {
         AuthDto.AuthResponse authResponse = authService.login(AuthDto.LoginRequest.builder()
                 .usernameOrEmail("employee")
                 .password("password123")
+                .portal("EMPLOYEE")
                 .build());
 
         assertNotNull(authResponse);
