@@ -1,92 +1,68 @@
 # CorporateTravel360 — Enterprise Business Travel & Expense Platform
 
-[![Build Status](https://img.shields.io/badge/build-local-blue.svg)]()
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-blue.svg)]()
-[![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)]()
-[![MySQL](https://img.shields.io/badge/MySQL-8.0-blue.svg)]()
-[![Security](https://img.shields.io/badge/Spring%20Security-6.x%20JWT-red.svg)]()
-[![License](https://img.shields.io/badge/License-Proprietary%20Enterprise-indigo.svg)]()
+**CorporateTravel360** is a production-style enterprise application for the complete corporate travel lifecycle: planning, policy evaluation, approvals, booking, duty of care, expenses, reimbursement and executive analytics.
 
-**CorporateTravel360** is a complete production-style enterprise web application designed to manage the entire lifecycle of corporate business travel from initial planning, automated policy evaluation, multi-tier approvals, booking & e-ticketing, real-time duty of care safety, AI receipt OCR expense filing, finance reimbursement, and executive BI analytics.
+## Key Modules
 
----
+1. Organization, employee and cost-center hierarchy.
+2. Travel search and corporate booking workflow.
+3. Travel requests, policy validation and multi-tier approvals.
+4. Booking, PNR/e-ticket and itinerary management.
+5. Active-trip duty of care and traveler support.
+6. Expense reports, receipt processing and reimbursement.
+7. Finance controls, audit trail and executive analytics.
+8. Role-based security with JWT authentication.
 
-## Key Modules & Capabilities
+## AI Capabilities
 
-1. **Organization & Cost Center Hierarchy**: Multi-tier organization model (`Organization` → `Department` → `Cost Center` → `Project` → `Employee`).
-2. **Interactive 8-Phase Lifecycle Flow**:
-   - `Phase 1`: Plan & AI Travel Assistant (Search Flights, Hotels, Cabs)
-   - `Phase 2`: Travel Request Submission (Automated policy check & budget validation)
-   - `Phase 3`: Multi-Tier Manager Approval (Configurable spend thresholds)
-   - `Phase 4`: Booking & E-Ticket Issuance (PNR, E-Ticket, Boarding Pass)
-   - `Phase 5`: Active Trip & Duty of Care (Live GPS/flight tracker, emergency SOS)
-   - `Phase 6`: AI OCR Receipt Scanning & Expense Claim (Automated extraction of merchant and tax)
-   - `Phase 7`: Finance Audit & Instant Wallet Settlement (Reimbursement payout)
-   - `Phase 8`: Executive BI Analytics & ESG (Carbon emissions saved, spend ROI)
-3. **Pluggable Provider Architecture**:
-   - `FlightProvider` (Multi-GDS Amadeus / Sabre / Mock)
-   - `HotelProvider` (Corporate Negotiated Rates / Mock)
-   - `ReceiptOcrProvider` (Vision AI OCR Engine / Mock)
-   - `ExchangeRateProvider` (Live Forex Multi-Currency)
-4. **Real-Time WebSockets**: Live flight advisories and 24/7 traveler care chat (`/ws-travel`).
-5. **Security & Immutable Audit Logging**: BCrypt password encryption, stateless JWT filter chain, IP tracking, and full RBAC enforcement.
+AI is an **assistive layer**, not an authorization layer. Core policy, approval, booking and reimbursement decisions remain deterministic and under human/company control.
 
----
+- **AI Travel Assistant** — natural-language trip planning and policy guidance; actual availability is obtained from configured travel providers.
+- **AI Trip Optimizer** — suggests cost, schedule and supplier optimization opportunities.
+- **AI Expense Review** — identifies possible expense anomalies or missing information and gives Finance-review guidance.
+- **Receipt/expense assistance** — existing receipt-processing flow can surface AI review flags.
+- **Optional OpenAI integration** — disabled by default and enabled only through environment configuration.
+
+AI must not invent prices, availability, policy limits, approvals, reimbursements or fraud determinations.
 
 ## Technology Stack
 
-- **Backend**: Java 17, Spring Boot 3.3.4, Spring Security 6.x, Spring Data JPA, Hibernate, SockJS/Stomp WebSocket, OpenAPI / Swagger.
-- **Frontend**: Enterprise Single-Page Application (HTML5, Tailwind CSS, Lucide Icons, Chart.js, Vanilla ES6+ Modular Components).
-- **Database**: MySQL 8.0 / H2 in-memory mode.
-- **DevOps**: Docker, Docker Compose (`docker-compose.yml`), Multi-Stage Build.
+- Backend: Java 17, Spring Boot 3.3.4, Spring Security 6.x, Spring Data JPA/Hibernate, WebSocket, OpenAPI/Swagger.
+- Frontend: HTML5, Tailwind CSS, Lucide, Chart.js and Vanilla ES6+.
+- Database: MySQL 8 / H2.
+- DevOps: Docker / Docker Compose.
 
----
+## AI Configuration
 
-## Seed Test Credentials
+```properties
+app.ai.openai.enabled=${AI_ENABLED:false}
+app.ai.openai.api-key=${OPENAI_API_KEY:}
+app.ai.openai.model=${OPENAI_MODEL:gpt-5.6-luna}
+app.ai.openai.base-url=${OPENAI_BASE_URL:https://api.openai.com/v1}
+```
 
-| Role | Username / Email | Password |
-|---|---|---|
-| **Super Admin** | `superadmin@corporatetravel.com` | `password123` |
-| **Corporate Admin** | `admin@acmetech.com` | `password123` |
-| **Travel Manager** | `travelmgr@acmetech.com` | `password123` |
-| **Line Manager / Approver** | `manager@acmetech.com` | `password123` |
-| **Employee / Traveler** | `traveler@acmetech.com` | `password123` |
-| **Finance Controller** | `finance@acmetech.com` | `password123` |
-| **HR Administrator** | `hr@acmetech.com` | `password123` |
-| **Airline Partner / Vendor** | `partner@indigoair.com` | `password123` |
-| **24/7 Support Agent** | `support@corporatetravel.com` | `password123` |
+Never commit an API key to the repository.
 
----
+## AI API Catalog
 
-## Quick Start & Local Execution
+- `POST /api/ai/travel-assistant` — natural-language corporate travel assistant.
+- `GET /api/ai/trip-optimizer` — trip optimization guidance.
+- `POST /api/ai/expense-review` — expense anomaly/review assistance.
+- Swagger: `/swagger-ui/index.html`.
 
-### 1. Build and Run via Gradle
+## Quick Start
+
 ```bash
 ./gradlew.bat compileJava test bootJar
 java -jar build/libs/corporate_management-1.0.0.jar
 ```
-Open **`http://localhost:8080`** in your browser. The default local profile uses an in-memory H2 database; provide the MySQL environment values in `.env.example` for a persistent deployment.
 
-### 2. Run via Docker Compose
-```bash
-docker-compose up --build -d
-```
+Open `http://localhost:8080`.
 
----
+## Verification
 
-## API Catalog & Documentation
-
-Interactive Swagger API documentation is available at:
-- **`http://localhost:8080/swagger-ui/index.html`**
-- OpenAPI 3.0 Specs: `http://localhost:8080/v3/api-docs`
-
----
-
-## Verification & Automated Testing
-
-Run the automated verification suite:
 ```bash
 ./gradlew.bat test
 ```
 
-The project includes controller, service, policy, authentication, analytics, AI, and workflow integration tests.
+The test suite covers authentication, travel workflow, policy evaluation, analytics, AI endpoints and expense-review logic.
