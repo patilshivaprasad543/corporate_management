@@ -8,6 +8,7 @@ import com.corporate.travel.entity.*;
 import com.corporate.travel.entity.enums.*;
 import com.corporate.travel.exception.ResourceNotFoundException;
 import com.corporate.travel.repository.*;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -123,9 +124,30 @@ public class TravelRequestService {
     }
 
     @Transactional(readOnly = true)
-    public TravelRequestDto.Response getRequestById(Long id) {
-        return mapToResponse(requestRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("TravelRequest", "id", id)));
+    public TravelRequestDto.Response getRequestById(Long id, Long viewerUserId) {
+        TravelRequest request = requestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("TravelRequest", "id", id));
+        User viewer = userRepository.findById(viewerUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", viewerUserId));
+
+        boolean owner = request.getEmployee() != null && viewerUserId.equals(request.getEmployee().getId());
+        boolean privileged = hasAnyRole(viewer, "ROLE_TRAVEL_MANAGER", "ROLE_FINANCE", "ROLE_COMPANY_ADMIN",
+                "ROLE_SUPER_ADMIN", "ROLE_AUDITOR");
+        if (!owner && !privileged) {
+            throw new AccessDeniedException("You are not authorized to view this travel request");
+        }
+        return mapToResponse(request);
+    }
+
+    private boolean hasAnyRole(User user, String... expectedRoles) {
+        return user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(role -> {
+                    String actual = role.getName().name();
+                    for (String expected : expectedRoles) {
+                        if (expected.equals(actual)) return true;
+                    }
+                    return false;
+                });
     }
 
     public TravelRequestDto.Response mapToResponse(TravelRequest req) {
