@@ -125,9 +125,10 @@ public class ExpenseService {
                 : String.join("; ", aiNotes));
 
         ExpenseReport saved = expenseReportRepository.save(report);
+        final BigDecimal reportTotal = total;
         walletRepository.findByUserId(userId).ifPresent(w -> {
             BigDecimal pending = w.getPendingExpenses() != null ? w.getPendingExpenses() : BigDecimal.ZERO;
-            w.setPendingExpenses(pending.add(total));
+            w.setPendingExpenses(pending.add(reportTotal));
             walletRepository.save(w);
         });
 
