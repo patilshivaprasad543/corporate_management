@@ -44,6 +44,9 @@ public class SecurityConfig {
                 .requestMatchers("/", "/index.html", "/app.js", "/styles.css", "/favicon.ico", "/static/**", "/assets/**",
                         "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/api/auth/**", "/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/search/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/travel-requests/my").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/travel-requests", "/api/travel-requests/*")
+                    .hasAnyAuthority("ROLE_TRAVEL_MANAGER", "ROLE_FINANCE", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN", "ROLE_AUDITOR")
                 .requestMatchers("/api/approvals/**").hasAnyAuthority("ROLE_APPROVER", "ROLE_FINANCE", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/bookings").hasAnyAuthority("ROLE_EMPLOYEE", "ROLE_TRAVEL_MANAGER", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/bookings/my").authenticated()
