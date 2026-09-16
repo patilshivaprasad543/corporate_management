@@ -18,12 +18,11 @@ import java.util.List;
 @RequestMapping("/api/travel-requests")
 @Tag(name = "Travel Requests", description = "Create, view, and track corporate travel requests with policy evaluation")
 public class TravelRequestController {
+    private final TravelRequestService travelRequestService;
+
     public TravelRequestController(TravelRequestService travelRequestService) {
         this.travelRequestService = travelRequestService;
     }
-
-
-    private final TravelRequestService travelRequestService;
 
     @PostMapping
     @Operation(summary = "Create and submit a new travel request")
@@ -50,8 +49,10 @@ public class TravelRequestController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get travel request details by ID")
-    public ResponseEntity<ApiResponse<TravelRequestDto.Response>> getRequestById(@PathVariable("id") Long id) {
-        return ResponseEntity.ok(ApiResponse.ok(travelRequestService.getRequestById(id), "Request details retrieved"));
+    public ResponseEntity<ApiResponse<TravelRequestDto.Response>> getRequestById(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable("id") Long id) {
+        Long userId = AuthenticatedUser.requireId(principal);
+        return ResponseEntity.ok(ApiResponse.ok(travelRequestService.getRequestById(id, userId), "Request details retrieved"));
     }
-
 }
