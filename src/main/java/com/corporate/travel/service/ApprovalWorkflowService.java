@@ -58,7 +58,9 @@ public class ApprovalWorkflowService {
             throw new IllegalArgumentException("Comments are required when rejecting or requesting changes");
         }
 
-        List<ApprovalStep> steps = approvalStepRepository.findByTravelRequestIdOrderByStepOrderAsc(requestId);
+        // Serialize approval decisions for the same request so two concurrent approvers
+        // cannot both act on the same pending step.
+        List<ApprovalStep> steps = approvalStepRepository.findByTravelRequestIdForUpdate(requestId);
         ApprovalStep currentStep = steps.stream()
                 .filter(s -> s.getStatus() == ApprovalStatus.PENDING)
                 .findFirst()
@@ -69,8 +71,6 @@ public class ApprovalWorkflowService {
         boolean designated = currentStep.getApprover() != null && currentStep.getApprover().getId().equals(approverUserId);
         boolean roleAuthorized = hasRole(approver, role);
 
-        // Once a specific approver is assigned, only that user (or a super admin) may act.
-        // Unassigned steps retain role-based routing so existing workflows continue to work.
         if (!superAdmin && currentStep.getApprover() != null && !designated) {
             throw new AccessDeniedException("This approval step is assigned to another approver");
         }
