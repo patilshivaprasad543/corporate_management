@@ -111,10 +111,9 @@ public class BookingService {
         BigDecimal tax = basePrice.multiply(BigDecimal.valueOf(0.12));
         BigDecimal total = basePrice.add(tax);
 
-        if (Boolean.FALSE.equals(dto.getPersonalBooking())) {
+        if (!Boolean.TRUE.equals(dto.getPersonalBooking())) {
             walletRepository.findByUserId(userId).ifPresent(wallet -> {
-                BigDecimal available = wallet.getTotalBudget().subtract(wallet.getUsedBudget());
-                if (available.compareTo(total) < 0) {
+                if (wallet.getRemainingBudget().compareTo(total) < 0) {
                     throw new BadRequestException("Insufficient corporate travel budget for this booking");
                 }
             });
