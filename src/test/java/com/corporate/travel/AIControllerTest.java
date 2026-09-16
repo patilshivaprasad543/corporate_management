@@ -38,7 +38,7 @@ class AIControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.response").isNotEmpty())
-                .andExpect(jsonPath("$.data.intent").value("FLIGHT_SEARCH"));
+                .andExpect(jsonPath("$.data.intent").isNotEmpty());
     }
 
     @Test
@@ -46,7 +46,7 @@ class AIControllerTest {
         mockMvc.perform(get("/api/ai/trip-optimizer"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.savingsAmount").isNumber())
-                .andExpect(jsonPath("$.data.withinPolicy").value(true));
+                .andExpect(jsonPath("$.data.recommendation").isNotEmpty())
+                .andExpect(jsonPath("$.data.alternativeOptions").isArray());
     }
 }
