@@ -44,25 +44,38 @@ public class ApprovalWorkflowService {
         User approver = userRepository.findById(approverUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", approverUserId));
 
+        if (request.getStatus() == RequestStatus.REJECTED || request.getStatus() == RequestStatus.APPROVED) {
+            throw new IllegalStateException("This travel request is already in a final state");
+        }
+        if (status == null || status == ApprovalStatus.PENDING || status == ApprovalStatus.APPROVED && comments != null && comments.length() > 1000) {
+            if (status == null || status == ApprovalStatus.PENDING) {
+                throw new IllegalArgumentException("A final approval action is required");
+            }
+            throw new IllegalArgumentException("Comments exceed the maximum length");
+        }
+        if ((status == ApprovalStatus.REJECTED || status == ApprovalStatus.CHANGES_REQUESTED)
+                && (comments == null || comments.isBlank())) {
+            throw new IllegalArgumentException("Comments are required when rejecting or requesting changes");
+        }
+
         List<ApprovalStep> steps = approvalStepRepository.findByTravelRequestIdOrderByStepOrderAsc(requestId);
         ApprovalStep currentStep = steps.stream()
                 .filter(s -> s.getStatus() == ApprovalStatus.PENDING)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("There is no pending approval step for this travel request"));
 
-        boolean authorized = approver.getRoles() != null && approver.getRoles().stream()
-                .anyMatch(role -> currentStep.getApproverRole().equals(role.getName().name())
-                        || "ROLE_SUPER_ADMIN".equals(role.getName().name()));
-        if (!authorized) {
-            throw new AccessDeniedException("You are not authorized for the current approval step");
-        }
+        String role = currentStep.getApproverRole();
+        boolean superAdmin = hasRole(approver, "ROLE_SUPER_ADMIN");
+        boolean designated = currentStep.getApprover() != null && currentStep.getApprover().getId().equals(approverUserId);
+        boolean roleAuthorized = hasRole(approver, role);
 
-        if (status == null || status == ApprovalStatus.PENDING) {
-            throw new IllegalArgumentException("A final approval action is required");
+        // Once a specific approver is assigned, only that user (or a super admin) may act.
+        // Unassigned steps retain role-based routing so existing workflows continue to work.
+        if (!superAdmin && currentStep.getApprover() != null && !designated) {
+            throw new AccessDeniedException("This approval step is assigned to another approver");
         }
-        if ((status == ApprovalStatus.REJECTED || status == ApprovalStatus.CHANGES_REQUESTED)
-                && (comments == null || comments.isBlank())) {
-            throw new IllegalArgumentException("Comments are required when rejecting or requesting changes");
+        if (!superAdmin && currentStep.getApprover() == null && !roleAuthorized) {
+            throw new AccessDeniedException("You are not authorized for the current approval step");
         }
 
         currentStep.setStatus(status);
@@ -86,9 +99,12 @@ public class ApprovalWorkflowService {
                         "Your travel request " + request.getRequestNumber() + " has been fully approved and can proceed to booking.",
                         NotificationType.REQUEST_APPROVED, "/book");
             } else {
-                ApprovalStep next = steps.stream()
-                        .filter(s -> s.getStatus() == ApprovalStatus.PENDING)
-                        .findFirst().orElse(null);
+                ApprovalStep next = steps.stream().filter(s -> s.getStatus() == ApprovalStatus.PENDING).findFirst().orElse(null);
+                if (next != null && next.getApprover() != null) {
+                    notificationService.sendNotification(next.getApprover().getId(), "Approval Required",
+                            "Travel request " + request.getRequestNumber() + " is waiting for your approval.",
+                            NotificationType.REQUEST_SUBMITTED, "/approvals");
+                }
                 request.setStatus(next != null && "ROLE_FINANCE".equals(next.getApproverRole())
                         ? RequestStatus.FINANCE_REVIEW : RequestStatus.MANAGER_REVIEW);
             }
@@ -99,6 +115,11 @@ public class ApprovalWorkflowService {
                 "TravelRequest", saved.getId(),
                 "Approval step " + currentStep.getStepOrder() + " completed for " + request.getRequestNumber(), null);
         return saved;
+    }
+
+    private boolean hasRole(User user, String expectedRole) {
+        return user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(role -> expectedRole.equals(role.getName().name()));
     }
 
     private void notifyEmployee(TravelRequest request, String title, String message,
