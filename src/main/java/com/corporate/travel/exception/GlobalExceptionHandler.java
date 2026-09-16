@@ -15,7 +15,6 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Object>> handleResourceNotFound(ResourceNotFoundException ex) {
         return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), "RESOURCE_NOT_FOUND"), HttpStatus.NOT_FOUND);
@@ -29,6 +28,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Object>> handleIllegalArgument(IllegalArgumentException ex) {
         return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), "BAD_REQUEST"), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Object>> handleIllegalState(IllegalStateException ex) {
+        return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), "INVALID_STATE_TRANSITION"), HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(UnauthorizedException.class)
@@ -50,34 +54,27 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handlePolicyViolation(PolicyViolationException ex) {
         Map<String, Object> errorDetails = new HashMap<>();
         errorDetails.put("violations", ex.getViolations());
-        ApiResponse<Object> response = ApiResponse.builder()
-                .success(false)
-                .message(ex.getMessage())
-                .errorCode("POLICY_VIOLATION")
-                .data(errorDetails)
-                .build();
+        ApiResponse<Object> response = ApiResponse.builder().success(false).message(ex.getMessage())
+                .errorCode("POLICY_VIOLATION").data(errorDetails).build();
         return new ResponseEntity<>(response, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
+        ex.getBindingResult().getAllErrors().forEach(error -> {
             String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
+            errors.put(fieldName, error.getDefaultMessage());
         });
-        ApiResponse<Object> response = ApiResponse.builder()
-                .success(false)
-                .message("Validation failed")
-                .errorCode("VALIDATION_ERROR")
-                .data(errors)
-                .build();
+        ApiResponse<Object> response = ApiResponse.builder().success(false).message("Validation failed")
+                .errorCode("VALIDATION_ERROR").data(errors).build();
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGenericException(Exception ex) {
-        return new ResponseEntity<>(ApiResponse.error(ex.getMessage() != null ? ex.getMessage() : "An unexpected internal server error occurred", "INTERNAL_SERVER_ERROR"), HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(ApiResponse.error(
+                ex.getMessage() != null ? ex.getMessage() : "An unexpected internal server error occurred",
+                "INTERNAL_SERVER_ERROR"), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
