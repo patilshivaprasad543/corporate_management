@@ -47,10 +47,10 @@ public class ApprovalWorkflowService {
         if (request.getStatus() == RequestStatus.REJECTED || request.getStatus() == RequestStatus.APPROVED) {
             throw new IllegalStateException("This travel request is already in a final state");
         }
-        if (status == null || status == ApprovalStatus.PENDING || status == ApprovalStatus.APPROVED && comments != null && comments.length() > 1000) {
-            if (status == null || status == ApprovalStatus.PENDING) {
-                throw new IllegalArgumentException("A final approval action is required");
-            }
+        if (status == null || status == ApprovalStatus.PENDING) {
+            throw new IllegalArgumentException("A final approval action is required");
+        }
+        if (comments != null && comments.length() > 1000) {
             throw new IllegalArgumentException("Comments exceed the maximum length");
         }
         if ((status == ApprovalStatus.REJECTED || status == ApprovalStatus.CHANGES_REQUESTED)
