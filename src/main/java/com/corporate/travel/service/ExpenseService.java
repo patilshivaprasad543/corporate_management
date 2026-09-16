@@ -126,7 +126,7 @@ public class ExpenseService {
 
         ExpenseReport saved = expenseReportRepository.save(report);
         final BigDecimal reportTotal = total;
-        walletRepository.findByUserId(userId).ifPresent(w -> {
+        walletRepository.findByUserIdForUpdate(userId).ifPresent(w -> {
             BigDecimal pending = w.getPendingExpenses() != null ? w.getPendingExpenses() : BigDecimal.ZERO;
             w.setPendingExpenses(pending.add(reportTotal));
             walletRepository.save(w);
@@ -158,7 +158,9 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseDto.ReportResponse approveExpenseReport(Long reportId, Long financeUserId, boolean approve) {
-        ExpenseReport report = getReport(reportId);
+        // Lock the report so duplicate/replayed approval requests cannot both mutate wallet totals.
+        ExpenseReport report = expenseReportRepository.findByIdForUpdate(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("ExpenseReport", "id", reportId));
         if (approve) {
             requireStatus(report, ExpenseStatus.SUBMITTED, ExpenseStatus.MANAGER_REVIEW, ExpenseStatus.FINANCE_REVIEW);
             report.setStatus(ExpenseStatus.APPROVED);
@@ -186,7 +188,8 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseDto.ReportResponse startReimbursement(Long reportId, Long financeUserId) {
-        ExpenseReport report = getReport(reportId);
+        ExpenseReport report = expenseReportRepository.findByIdForUpdate(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("ExpenseReport", "id", reportId));
         requireStatus(report, ExpenseStatus.APPROVED);
         report.setStatus(ExpenseStatus.REIMBURSEMENT_PROCESSING);
         auditService.logAction(String.valueOf(financeUserId), "START_REIMBURSEMENT", "ExpenseReport", reportId,
@@ -196,11 +199,12 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseDto.ReportResponse completeReimbursement(Long reportId, Long financeUserId) {
-        ExpenseReport report = getReport(reportId);
+        ExpenseReport report = expenseReportRepository.findByIdForUpdate(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("ExpenseReport", "id", reportId));
         requireStatus(report, ExpenseStatus.REIMBURSEMENT_PROCESSING);
         report.setStatus(ExpenseStatus.REIMBURSED);
         BigDecimal approved = report.getApprovedAmount() != null ? report.getApprovedAmount() : BigDecimal.ZERO;
-        walletRepository.findByUserId(report.getEmployee().getId()).ifPresent(w -> {
+        walletRepository.findByUserIdForUpdate(report.getEmployee().getId()).ifPresent(w -> {
             BigDecimal reimbursed = w.getReimbursedAmount() != null ? w.getReimbursedAmount() : BigDecimal.ZERO;
             w.setReimbursedAmount(reimbursed.add(approved));
             walletRepository.save(w);
@@ -215,11 +219,12 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseDto.ReportResponse failReimbursement(Long reportId, Long financeUserId) {
-        ExpenseReport report = getReport(reportId);
+        ExpenseReport report = expenseReportRepository.findByIdForUpdate(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("ExpenseReport", "id", reportId));
         requireStatus(report, ExpenseStatus.REIMBURSEMENT_PROCESSING);
         report.setStatus(ExpenseStatus.PAYMENT_FAILED);
         BigDecimal approved = report.getApprovedAmount() != null ? report.getApprovedAmount() : BigDecimal.ZERO;
-        walletRepository.findByUserId(report.getEmployee().getId()).ifPresent(w -> {
+        walletRepository.findByUserIdForUpdate(report.getEmployee().getId()).ifPresent(w -> {
             BigDecimal pending = w.getPendingExpenses() != null ? w.getPendingExpenses() : BigDecimal.ZERO;
             w.setPendingExpenses(pending.add(approved));
             walletRepository.save(w);
@@ -242,7 +247,7 @@ public class ExpenseService {
     }
 
     private void reducePendingExpense(Long userId, BigDecimal amount) {
-        walletRepository.findByUserId(userId).ifPresent(w -> {
+        walletRepository.findByUserIdForUpdate(userId).ifPresent(w -> {
             BigDecimal pending = w.getPendingExpenses() != null ? w.getPendingExpenses() : BigDecimal.ZERO;
             w.setPendingExpenses(pending.subtract(amount).max(BigDecimal.ZERO));
             walletRepository.save(w);
