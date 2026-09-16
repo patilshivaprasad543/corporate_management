@@ -8,6 +8,7 @@ import com.corporate.travel.entity.*;
 import com.corporate.travel.entity.enums.*;
 import com.corporate.travel.exception.BadRequestException;
 import com.corporate.travel.exception.ResourceNotFoundException;
+import org.springframework.security.access.AccessDeniedException;
 import com.corporate.travel.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +37,6 @@ public class BookingService {
         this.auditService = auditService;
     }
 
-
     private final BookingRepository bookingRepository;
     private final TravelRequestRepository requestRepository;
     private final UserRepository userRepository;
@@ -52,21 +52,54 @@ public class BookingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
+        if (dto == null || dto.getBookingType() == null || dto.getPaymentMethod() == null) {
+            throw new BadRequestException("Booking type and payment method are required");
+        }
+        if (dto.getHotelNights() != null && dto.getHotelNights() <= 0) {
+            throw new BadRequestException("Hotel nights must be greater than zero");
+        }
+
         TravelRequest request = null;
         if (dto.getTravelRequestId() != null) {
-            request = requestRepository.findById(dto.getTravelRequestId()).orElse(null);
-            if (request != null) {
-                request.setStatus(RequestStatus.CONFIRMED);
-                requestRepository.save(request);
+            request = requestRepository.findById(dto.getTravelRequestId())
+                    .orElseThrow(() -> new ResourceNotFoundException("TravelRequest", "id", dto.getTravelRequestId()));
+
+            if (request.getEmployee() == null || request.getEmployee().getId() == null) {
+                throw new BadRequestException("Travel request has no valid employee");
             }
+            boolean owner = request.getEmployee().getId().equals(userId);
+            boolean bookingManager = user.getRoles() != null && user.getRoles().stream().anyMatch(role -> {
+                String name = role.getName().name();
+                return "ROLE_TRAVEL_MANAGER".equals(name)
+                        || "ROLE_COMPANY_ADMIN".equals(name)
+                        || "ROLE_SUPER_ADMIN".equals(name);
+            });
+            if (!owner && !bookingManager) {
+                throw new AccessDeniedException("You can only book your own travel requests unless you are an authorized travel manager");
+            }
+
+            if (request.getStatus() != RequestStatus.APPROVED && request.getStatus() != RequestStatus.BOOKING_IN_PROGRESS) {
+                throw new BadRequestException("Travel request must be fully approved before booking");
+            }
+
+            List<Booking> existing = bookingRepository.findByTravelRequestId(request.getId());
+            boolean activeBookingExists = existing.stream().anyMatch(b ->
+                    b.getStatus() != BookingStatus.CANCELLED && b.getStatus() != BookingStatus.FAILED);
+            if (activeBookingExists) {
+                throw new BadRequestException("An active booking already exists for this travel request");
+            }
+
+            request.setStatus(RequestStatus.BOOKING_IN_PROGRESS);
+            requestRepository.save(request);
         }
 
         Organization org = user.getOrganization() != null ? user.getOrganization()
-                : organizationRepository.findAll().stream().findFirst().orElseThrow();
+                : organizationRepository.findAll().stream().findFirst()
+                    .orElseThrow(() -> new BadRequestException("No organization is available for this booking"));
 
-        String pnr = "PNR" + (100000 + (int)(Math.random() * 900000));
-        String ref = "BK-" + (1000 + (int)(Math.random() * 9000));
-        String eTicket = "ETK-098-" + (1000000 + (int)(Math.random() * 9000000));
+        String pnr = "PNR" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        String ref = "BK-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase();
+        String eTicket = "ETK-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
 
         BigDecimal basePrice = BigDecimal.valueOf(5400);
         if (dto.getBookingType() == BookingType.HOTEL) {
@@ -77,6 +110,15 @@ public class BookingService {
         }
         BigDecimal tax = basePrice.multiply(BigDecimal.valueOf(0.12));
         BigDecimal total = basePrice.add(tax);
+
+        if (Boolean.FALSE.equals(dto.getPersonalBooking())) {
+            walletRepository.findByUserId(userId).ifPresent(wallet -> {
+                BigDecimal available = wallet.getTotalBudget().subtract(wallet.getUsedBudget());
+                if (available.compareTo(total) < 0) {
+                    throw new BadRequestException("Insufficient corporate travel budget for this booking");
+                }
+            });
+        }
 
         Booking booking = Booking.builder()
                 .bookingReference(ref)
@@ -107,7 +149,6 @@ public class BookingService {
         booking.setItems(items);
         Booking savedBooking = bookingRepository.save(booking);
 
-        // Record Payment Transaction
         paymentRepository.save(PaymentTransaction.builder()
                 .transactionReference("TXN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .booking(savedBooking)
@@ -119,7 +160,6 @@ public class BookingService {
                 .providerGateway("CORPORATE_VIRTUAL_GATEWAY")
                 .build());
 
-        // Update Wallet if corporate
         if (!Boolean.TRUE.equals(dto.getPersonalBooking())) {
             walletRepository.findByUserId(userId).ifPresent(wallet -> {
                 wallet.setUsedBudget(wallet.getUsedBudget().add(total));
@@ -127,7 +167,11 @@ public class BookingService {
             });
         }
 
-        // Build Unified Itinerary
+        if (request != null) {
+            request.setStatus(RequestStatus.CONFIRMED);
+            requestRepository.save(request);
+        }
+
         buildItineraryForBooking(user, request, savedBooking);
 
         notificationService.sendNotification(user.getId(), "Booking Confirmed - " + pnr,
