@@ -61,7 +61,12 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/search/**").permitAll()
                 .requestMatchers("/api/approvals/**").hasAnyAuthority("ROLE_APPROVER", "ROLE_FINANCE", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN")
-                .requestMatchers("/api/expenses/*/approve", "/api/expenses/*/reject").hasAnyAuthority("ROLE_APPROVER", "ROLE_FINANCE", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN")
+                // Direct expense approval triggers reimbursement, so restrict it to finance/admin roles.
+                .requestMatchers("/api/expenses/*/approve", "/api/expenses/*/reject")
+                    .hasAnyAuthority("ROLE_FINANCE", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN")
+                // Only finance/admin/audit roles can retrieve every employee's expense reports.
+                .requestMatchers(HttpMethod.GET, "/api/expenses")
+                    .hasAnyAuthority("ROLE_FINANCE", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN", "ROLE_AUDITOR")
                 .requestMatchers("/api/admin/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN", "ROLE_HR")
                 .requestMatchers("/api/analytics/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN", "ROLE_APPROVER", "ROLE_FINANCE", "ROLE_TRAVEL_MANAGER", "ROLE_EMPLOYEE", "ROLE_FINANCE_APPROVER", "ROLE_DEPARTMENT_HEAD", "ROLE_AUDITOR")
                 .requestMatchers("/api/audit/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN", "ROLE_FINANCE")
