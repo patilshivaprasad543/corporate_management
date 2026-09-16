@@ -1,92 +1,59 @@
-# CorporateTravel360 — Enterprise Business Travel & Expense Platform
+# CorporateTravel360 — Corporate Travel & Expense Management Platform
 
-[![Build Status](https://img.shields.io/badge/build-local-blue.svg)]()
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-blue.svg)]()
-[![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)]()
-[![MySQL](https://img.shields.io/badge/MySQL-8.0-blue.svg)]()
-[![Security](https://img.shields.io/badge/Spring%20Security-6.x%20JWT-red.svg)]()
-[![License](https://img.shields.io/badge/License-Proprietary%20Enterprise-indigo.svg)]()
+Enterprise web application for managing the complete corporate travel and employee expense lifecycle.
 
-**CorporateTravel360** is a complete production-style enterprise web application designed to manage the entire lifecycle of corporate business travel from initial planning, automated policy evaluation, multi-tier approvals, booking & e-ticketing, real-time duty of care safety, AI receipt OCR expense filing, finance reimbursement, and executive BI analytics.
+## Scope
+Employee → Travel Request → Policy Check → Manager Approval → Finance/Admin Approval → Booking → Trip → Expense Claim → Receipt Verification → Finance Audit → Reimbursement → Reports & Audit.
 
----
+## Core Modules
+- Employee and organization management
+- Departments, designations and cost centers
+- Corporate travel requests
+- Travel policy and budget controls
+- Multi-level approvals
+- Flight, hotel, train and cab bookings
+- Itineraries and trip management
+- Expense claims and receipts
+- Corporate cards and card transactions
+- Vendor management
+- Finance, payments and reimbursements
+- Notifications
+- Reports and management dashboards
+- Role-based access control
+- Audit logging
 
-## Key Modules & Capabilities
+## Technology
+- Java 17
+- Spring Boot 3.3.4
+- Spring Security 6 / JWT
+- Spring Data JPA / Hibernate
+- MySQL 8 / H2 for local testing
+- Gradle
+- HTML5, Tailwind CSS, JavaScript, Chart.js and Lucide
+- OpenAPI / Swagger
+- WebSocket for supported real-time notifications
 
-1. **Organization & Cost Center Hierarchy**: Multi-tier organization model (`Organization` → `Department` → `Cost Center` → `Project` → `Employee`).
-2. **Interactive 8-Phase Lifecycle Flow**:
-   - `Phase 1`: Plan & AI Travel Assistant (Search Flights, Hotels, Cabs)
-   - `Phase 2`: Travel Request Submission (Automated policy check & budget validation)
-   - `Phase 3`: Multi-Tier Manager Approval (Configurable spend thresholds)
-   - `Phase 4`: Booking & E-Ticket Issuance (PNR, E-Ticket, Boarding Pass)
-   - `Phase 5`: Active Trip & Duty of Care (Live GPS/flight tracker, emergency SOS)
-   - `Phase 6`: AI OCR Receipt Scanning & Expense Claim (Automated extraction of merchant and tax)
-   - `Phase 7`: Finance Audit & Instant Wallet Settlement (Reimbursement payout)
-   - `Phase 8`: Executive BI Analytics & ESG (Carbon emissions saved, spend ROI)
-3. **Pluggable Provider Architecture**:
-   - `FlightProvider` (Multi-GDS Amadeus / Sabre / Mock)
-   - `HotelProvider` (Corporate Negotiated Rates / Mock)
-   - `ReceiptOcrProvider` (Vision AI OCR Engine / Mock)
-   - `ExchangeRateProvider` (Live Forex Multi-Currency)
-4. **Real-Time WebSockets**: Live flight advisories and 24/7 traveler care chat (`/ws-travel`).
-5. **Security & Immutable Audit Logging**: BCrypt password encryption, stateless JWT filter chain, IP tracking, and full RBAC enforcement.
+## Design Principle
+This project is intentionally **non-AI**. Business rules, policy checks, approvals, booking workflows and finance controls are deterministic enterprise workflows. External travel providers can be plugged in behind provider interfaces without coupling the core domain to a vendor.
 
----
+## Local Configuration
+Set database credentials through environment variables:
 
-## Technology Stack
+```text
+DB_URL=jdbc:mysql://localhost:3306/corporate_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+DB_USERNAME=root
+DB_PASSWORD=your_password
+JWT_SECRET=replace-with-a-secure-secret
+```
 
-- **Backend**: Java 17, Spring Boot 3.3.4, Spring Security 6.x, Spring Data JPA, Hibernate, SockJS/Stomp WebSocket, OpenAPI / Swagger.
-- **Frontend**: Enterprise Single-Page Application (HTML5, Tailwind CSS, Lucide Icons, Chart.js, Vanilla ES6+ Modular Components).
-- **Database**: MySQL 8.0 / H2 in-memory mode.
-- **DevOps**: Docker, Docker Compose (`docker-compose.yml`), Multi-Stage Build.
+Run:
 
----
-
-## Seed Test Credentials
-
-| Role | Username / Email | Password |
-|---|---|---|
-| **Super Admin** | `superadmin@corporatetravel.com` | `password123` |
-| **Corporate Admin** | `admin@acmetech.com` | `password123` |
-| **Travel Manager** | `travelmgr@acmetech.com` | `password123` |
-| **Line Manager / Approver** | `manager@acmetech.com` | `password123` |
-| **Employee / Traveler** | `traveler@acmetech.com` | `password123` |
-| **Finance Controller** | `finance@acmetech.com` | `password123` |
-| **HR Administrator** | `hr@acmetech.com` | `password123` |
-| **Airline Partner / Vendor** | `partner@indigoair.com` | `password123` |
-| **24/7 Support Agent** | `support@corporatetravel.com` | `password123` |
-
----
-
-## Quick Start & Local Execution
-
-### 1. Build and Run via Gradle
 ```bash
-./gradlew.bat compileJava test bootJar
+./gradlew.bat clean test bootJar
 java -jar build/libs/corporate_management-1.0.0.jar
 ```
-Open **`http://localhost:8080`** in your browser. The default local profile uses an in-memory H2 database; provide the MySQL environment values in `.env.example` for a persistent deployment.
 
-### 2. Run via Docker Compose
-```bash
-docker-compose up --build -d
-```
+Swagger: `http://localhost:8080/swagger-ui/index.html`
 
----
-
-## API Catalog & Documentation
-
-Interactive Swagger API documentation is available at:
-- **`http://localhost:8080/swagger-ui/index.html`**
-- OpenAPI 3.0 Specs: `http://localhost:8080/v3/api-docs`
-
----
-
-## Verification & Automated Testing
-
-Run the automated verification suite:
-```bash
-./gradlew.bat test
-```
-
-The project includes controller, service, policy, authentication, analytics, AI, and workflow integration tests.
+## Security
+Never commit real database passwords, JWT secrets, API keys, production credentials or personal data. Use environment variables or a deployment secret manager.
