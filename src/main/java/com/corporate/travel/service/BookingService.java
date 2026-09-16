@@ -62,7 +62,9 @@ public class BookingService {
 
         TravelRequest request = null;
         if (dto.getTravelRequestId() != null) {
-            request = requestRepository.findById(dto.getTravelRequestId())
+            // Lock the travel request before checking status and active bookings.
+            // This serializes concurrent booking attempts for the same request.
+            request = requestRepository.findByIdForUpdate(dto.getTravelRequestId())
                     .orElseThrow(() -> new ResourceNotFoundException("TravelRequest", "id", dto.getTravelRequestId()));
             if (request.getEmployee() == null || request.getEmployee().getId() == null) {
                 throw new BadRequestException("Travel request has no valid employee");
@@ -105,11 +107,11 @@ public class BookingService {
         BigDecimal total = basePrice.add(tax);
 
         if (!Boolean.TRUE.equals(dto.getPersonalBooking())) {
-            walletRepository.findByUserId(userId).ifPresent(wallet -> {
-                if (wallet.getRemainingBudget().compareTo(total) < 0) {
-                    throw new BadRequestException("Insufficient corporate travel budget for this booking");
-                }
-            });
+            TravelWallet wallet = walletRepository.findByUserIdForUpdate(userId)
+                    .orElse(null);
+            if (wallet != null && wallet.getRemainingBudget().compareTo(total) < 0) {
+                throw new BadRequestException("Insufficient corporate travel budget for this booking");
+            }
         }
 
         Booking booking = Booking.builder().bookingReference(ref).pnrNumber(pnr).bookingType(dto.getBookingType())
@@ -129,7 +131,7 @@ public class BookingService {
                 .status(PaymentStatus.SUCCESSFUL).providerGateway("CORPORATE_VIRTUAL_GATEWAY").build());
 
         if (!Boolean.TRUE.equals(dto.getPersonalBooking())) {
-            walletRepository.findByUserId(userId).ifPresent(wallet -> {
+            walletRepository.findByUserIdForUpdate(userId).ifPresent(wallet -> {
                 wallet.setUsedBudget(wallet.getUsedBudget().add(total));
                 walletRepository.save(wallet);
             });
