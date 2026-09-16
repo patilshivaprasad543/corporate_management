@@ -1,8 +1,6 @@
 package com.corporate.travel.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.corporate.travel.ai.AIExpenseFraudService;
 import com.corporate.travel.dto.ExpenseDto;
 import com.corporate.travel.entity.*;
 import com.corporate.travel.entity.enums.ExpenseCategory;
@@ -21,24 +19,26 @@ import java.util.stream.Collectors;
 
 @Service
 public class ExpenseService {
-    private static final Logger log = LoggerFactory.getLogger(ExpenseService.class);
-
-    public ExpenseService(ExpenseReportRepository expenseReportRepository, UserRepository userRepository, TravelRequestRepository travelRequestRepository, TravelWalletRepository walletRepository, NotificationService notificationService, AuditService auditService) {
-        this.expenseReportRepository = expenseReportRepository;
-        this.userRepository = userRepository;
-        this.travelRequestRepository = travelRequestRepository;
-        this.walletRepository = walletRepository;
-        this.notificationService = notificationService;
-        this.auditService = auditService;
-    }
-
-
     private final ExpenseReportRepository expenseReportRepository;
     private final UserRepository userRepository;
     private final TravelRequestRepository travelRequestRepository;
     private final TravelWalletRepository walletRepository;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    private final AIExpenseFraudService aiExpenseFraudService;
+
+    public ExpenseService(ExpenseReportRepository expenseReportRepository, UserRepository userRepository,
+                          TravelRequestRepository travelRequestRepository, TravelWalletRepository walletRepository,
+                          NotificationService notificationService, AuditService auditService,
+                          AIExpenseFraudService aiExpenseFraudService) {
+        this.expenseReportRepository = expenseReportRepository;
+        this.userRepository = userRepository;
+        this.travelRequestRepository = travelRequestRepository;
+        this.walletRepository = walletRepository;
+        this.notificationService = notificationService;
+        this.auditService = auditService;
+        this.aiExpenseFraudService = aiExpenseFraudService;
+    }
 
     @Transactional
     public ExpenseDto.ReportResponse createExpenseReport(Long userId, ExpenseDto.CreateReportRequest dto) {
@@ -47,11 +47,14 @@ public class ExpenseService {
 
         TravelRequest req = null;
         if (dto.getTravelRequestId() != null) {
-            req = travelRequestRepository.findById(dto.getTravelRequestId()).orElse(null);
+            req = travelRequestRepository.findById(dto.getTravelRequestId())
+                    .orElseThrow(() -> new ResourceNotFoundException("TravelRequest", "id", dto.getTravelRequestId()));
         }
 
-        String repNum = "EXP-" + (1000 + (int)(Math.random() * 9000));
+        String repNum = "EXP-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         BigDecimal total = BigDecimal.ZERO;
+        boolean hasAiFlags = false;
+        List<String> aiNotes = new ArrayList<>();
 
         ExpenseReport report = ExpenseReport.builder()
                 .reportNumber(repNum)
@@ -64,21 +67,20 @@ public class ExpenseService {
                 .items(new ArrayList<>())
                 .build();
 
-        boolean hasAiFlags = false;
-        List<String> aiNotes = new ArrayList<>();
-
         if (dto.getItems() != null) {
             for (ExpenseDto.CreateItemRequest itemDto : dto.getItems()) {
+                if (itemDto.getAmount() == null || itemDto.getAmount().signum() < 0) {
+                    throw new IllegalArgumentException("Expense amount cannot be null or negative");
+                }
+
                 total = total.add(itemDto.getAmount());
                 boolean compliant = true;
                 String flagReason = null;
 
-                // Anomaly check
-                if (itemDto.getCategory() == ExpenseCategory.MEALS && itemDto.getAmount().compareTo(BigDecimal.valueOf(2500)) > 0) {
+                if (itemDto.getCategory() == ExpenseCategory.MEALS
+                        && itemDto.getAmount().compareTo(BigDecimal.valueOf(2000)) > 0) {
                     compliant = false;
-                    flagReason = "Meal bill exceeds daily policy limit of ₹2,000";
-                    hasAiFlags = true;
-                    aiNotes.add(flagReason);
+                    flagReason = "Meal expense exceeds the ₹2,000 policy threshold";
                 }
 
                 ExpenseItem item = ExpenseItem.builder()
@@ -95,17 +97,29 @@ public class ExpenseService {
                         .policyFlagReason(flagReason)
                         .duplicateSuspect(false)
                         .build();
+
+                List<String> aiFlags = aiExpenseFraudService.inspectExpense(item);
+                if (!aiFlags.isEmpty()) {
+                    hasAiFlags = true;
+                    aiNotes.addAll(aiFlags);
+                }
+                if (flagReason != null) {
+                    hasAiFlags = true;
+                    aiNotes.add(flagReason);
+                }
+                item.setDuplicateSuspect(false);
                 report.getItems().add(item);
             }
         }
 
         report.setTotalAmount(total);
         report.setHasAiFlags(hasAiFlags);
-        report.setAiReviewNotes(aiNotes.isEmpty() ? "AI Audit: No fraud anomalies detected." : String.join("; ", aiNotes));
+        report.setAiReviewNotes(aiNotes.isEmpty()
+                ? "AI audit completed: no automatic anomaly flags detected. Finance review remains required."
+                : String.join("; ", aiNotes));
 
         ExpenseReport saved = expenseReportRepository.save(report);
 
-        // Update Wallet Pending
         final BigDecimal reportTotal = total;
         walletRepository.findByUserId(userId).ifPresent(w -> {
             w.setPendingExpenses(w.getPendingExpenses().add(reportTotal));
@@ -133,7 +147,7 @@ public class ExpenseService {
                 .currency("INR")
                 .suggestedCategory(ExpenseCategory.MEALS)
                 .policyCompliant(amt.compareTo(BigDecimal.valueOf(2000)) <= 0)
-                .complianceNote(amt.compareTo(BigDecimal.valueOf(2000)) <= 0 ? "Compliant: Below ₹2,000 per meal limit" : "Exceeds daily meal cap")
+                .complianceNote(amt.compareTo(BigDecimal.valueOf(2000)) <= 0 ? "Compliant: Below ₹2,000 per meal limit" : "Exceeds meal policy threshold")
                 .duplicateSuspect(false)
                 .build();
     }
@@ -143,19 +157,27 @@ public class ExpenseService {
         ExpenseReport report = expenseReportRepository.findById(reportId)
                 .orElseThrow(() -> new ResourceNotFoundException("ExpenseReport", "id", reportId));
 
+        if (report.getStatus() == ExpenseStatus.APPROVED || report.getStatus() == ExpenseStatus.REJECTED) {
+            throw new IllegalStateException("Expense report has already reached a final status");
+        }
+
         if (approve) {
             report.setStatus(ExpenseStatus.APPROVED);
             report.setApprovedAmount(report.getTotalAmount());
             walletRepository.findByUserId(report.getEmployee().getId()).ifPresent(w -> {
-                w.setPendingExpenses(w.getPendingExpenses().subtract(report.getTotalAmount()));
+                w.setPendingExpenses(w.getPendingExpenses().subtract(report.getTotalAmount()).max(BigDecimal.ZERO));
                 w.setReimbursedAmount(w.getReimbursedAmount().add(report.getTotalAmount()));
                 walletRepository.save(w);
             });
             notificationService.sendNotification(report.getEmployee().getId(), "Expense Approved & Reimbursed",
                     "Your expense report " + report.getReportNumber() + " for ₹" + report.getTotalAmount() + " has been approved.",
                     NotificationType.EXPENSE_APPROVED, "/expenses");
+            auditService.logAction(String.valueOf(financeUserId), "APPROVE_EXPENSE_REPORT", "ExpenseReport", reportId,
+                    "Approved and marked reimbursed: " + report.getReportNumber(), null);
         } else {
             report.setStatus(ExpenseStatus.REJECTED);
+            auditService.logAction(String.valueOf(financeUserId), "REJECT_EXPENSE_REPORT", "ExpenseReport", reportId,
+                    "Rejected expense report: " + report.getReportNumber(), null);
         }
 
         ExpenseReport saved = expenseReportRepository.save(report);
@@ -179,36 +201,21 @@ public class ExpenseService {
     public ExpenseDto.ReportResponse mapToResponse(ExpenseReport r) {
         List<ExpenseDto.ItemResponse> itemDtos = r.getItems() != null ?
                 r.getItems().stream().map(i -> ExpenseDto.ItemResponse.builder()
-                        .id(i.getId())
-                        .category(i.getCategory())
-                        .expenseDate(i.getExpenseDate())
-                        .merchantName(i.getMerchantName())
-                        .amount(i.getAmount())
-                        .taxAmount(i.getTaxAmount())
-                        .description(i.getDescription())
-                        .receiptUrl(i.getReceiptUrl())
-                        .policyCompliant(i.getPolicyCompliant())
-                        .policyFlagReason(i.getPolicyFlagReason())
-                        .duplicateSuspect(i.getDuplicateSuspect())
-                        .build()).collect(Collectors.toList()) : new ArrayList<>();
+                        .id(i.getId()).category(i.getCategory()).expenseDate(i.getExpenseDate())
+                        .merchantName(i.getMerchantName()).amount(i.getAmount()).taxAmount(i.getTaxAmount())
+                        .description(i.getDescription()).receiptUrl(i.getReceiptUrl())
+                        .policyCompliant(i.getPolicyCompliant()).policyFlagReason(i.getPolicyFlagReason())
+                        .duplicateSuspect(i.getDuplicateSuspect()).build()).collect(Collectors.toList()) : new ArrayList<>();
 
         return ExpenseDto.ReportResponse.builder()
-                .id(r.getId())
-                .reportNumber(r.getReportNumber())
-                .title(r.getTitle())
+                .id(r.getId()).reportNumber(r.getReportNumber()).title(r.getTitle())
                 .travelRequestId(r.getTravelRequest() != null ? r.getTravelRequest().getId() : null)
                 .tripName(r.getTravelRequest() != null ? r.getTravelRequest().getTripName() : "General Expense")
                 .employeeId(r.getEmployee() != null ? r.getEmployee().getId() : null)
                 .employeeName(r.getEmployee() != null ? r.getEmployee().getFullName() : "")
                 .departmentName(r.getDepartment() != null ? r.getDepartment().getName() : "Enterprise Corporate")
-                .status(r.getStatus())
-                .totalAmount(r.getTotalAmount())
-                .approvedAmount(r.getApprovedAmount())
-                .currencyCode(r.getCurrencyCode())
-                .hasAiFlags(r.getHasAiFlags())
-                .aiReviewNotes(r.getAiReviewNotes())
-                .createdAt(r.getCreatedAt())
-                .items(itemDtos)
-                .build();
+                .status(r.getStatus()).totalAmount(r.getTotalAmount()).approvedAmount(r.getApprovedAmount())
+                .currencyCode(r.getCurrencyCode()).hasAiFlags(r.getHasAiFlags()).aiReviewNotes(r.getAiReviewNotes())
+                .createdAt(r.getCreatedAt()).items(itemDtos).build();
     }
 }
