@@ -1,4 +1,4 @@
-/* CorporateTravel360: exactly six user-facing portals. */
+/* CorporateTravel360: six user-facing portals; Travel Agent is part of Support. */
 (function () {
   'use strict';
 
@@ -12,15 +12,24 @@
   ]);
 
   if (typeof DEMO_USERS !== 'undefined') {
-    Object.keys(DEMO_USERS).forEach(function (role) {
-      if (!visibleRoles.has(role)) delete DEMO_USERS[role];
-    });
+    /* Remove legacy vendor/travel-manager/super-admin personas from the UI. */
+    delete DEMO_USERS.ROLE_VENDOR;
+    delete DEMO_USERS.ROLE_TRAVEL_MANAGER;
+    delete DEMO_USERS.ROLE_SUPER_ADMIN;
+
+    /* The former Travel Agent persona is now represented by Support. */
+    if (DEMO_USERS.ROLE_SUPPORT) {
+      DEMO_USERS.ROLE_SUPPORT.portalLabel = 'Support';
+      DEMO_USERS.ROLE_SUPPORT.designation = 'Travel Agent & 24/7 Global Traveler Support';
+      DEMO_USERS.ROLE_SUPPORT.department = 'Travel Operations & Customer Success';
+      DEMO_USERS.ROLE_SUPPORT.avatar = 'TA';
+    }
+
     DEMO_USERS.ROLE_COMPANY_ADMIN.portalLabel = 'Admin';
     DEMO_USERS.ROLE_EMPLOYEE.portalLabel = 'Employee';
     DEMO_USERS.ROLE_APPROVER.portalLabel = 'Manager';
     DEMO_USERS.ROLE_HR.portalLabel = 'HR';
     DEMO_USERS.ROLE_FINANCE.portalLabel = 'Finance';
-    DEMO_USERS.ROLE_SUPPORT.portalLabel = 'Support';
   }
 
   if (typeof ROLE_NAVS !== 'undefined') {
@@ -47,6 +56,18 @@
       { id: 'settings', label: 'Policies & Cost Centers', icon: 'sliders' },
       { id: 'audit', label: 'Security & Audit Logs', icon: 'shield-check' }
     ];
+
+    /* Support owns both traveler-care and travel-agent operational work. */
+    ROLE_NAVS.ROLE_SUPPORT = [
+      { id: 'login-portal', label: '🔐 Login Portal', icon: 'shield-check' },
+      { id: 'dashboard', label: 'Support Command Center', icon: 'layout-dashboard' },
+      { id: 'requests', label: 'Travel Service Queue', icon: 'briefcase-business', badge: '1' },
+      { id: 'itinerary', label: 'Traveler Itineraries', icon: 'calendar-days' },
+      { id: 'search', label: 'Travel Agent Desk', icon: 'plane' },
+      { id: 'risk', label: 'Emergency & Duty of Care', icon: 'shield-alert' },
+      { id: 'expenses', label: 'Travel Expense Assistance', icon: 'receipt' },
+      { id: 'analytics', label: 'Travel Operations', icon: 'bar-chart-3' }
+    ];
   }
 
   const selector = document.getElementById('roleSelector');
@@ -55,8 +76,12 @@
       if (!visibleRoles.has(option.value)) option.remove();
     });
     const labels = {
-      ROLE_COMPANY_ADMIN: 'Admin', ROLE_EMPLOYEE: 'Employee', ROLE_APPROVER: 'Manager',
-      ROLE_HR: 'HR', ROLE_FINANCE: 'Finance', ROLE_SUPPORT: 'Support'
+      ROLE_COMPANY_ADMIN: 'Admin',
+      ROLE_EMPLOYEE: 'Employee',
+      ROLE_APPROVER: 'Manager',
+      ROLE_HR: 'HR',
+      ROLE_FINANCE: 'Finance',
+      ROLE_SUPPORT: 'Support • Travel Agent'
     };
     Array.from(selector.options).forEach(function (option) {
       if (labels[option.value]) option.textContent = labels[option.value];
@@ -67,15 +92,14 @@
     { key: 'ROLE_COMPANY_ADMIN', label: 'Admin', description: 'Company administration, policies, approvals, budgets and audit.' },
     { key: 'ROLE_EMPLOYEE', label: 'Employee', description: 'Travel requests, bookings, itineraries, expenses and personal travel assistance.' },
     { key: 'ROLE_APPROVER', label: 'Manager', description: 'Team travel approvals, team requests, expenses and budgets.' },
-    { key: 'ROLE_HR', label: 'HR', description: 'Employee travel records, people operations and duty of care.' },
+    { key: 'ROLE_HR', label: 'HR', description: 'Employee travel records, people operations, budgets and duty of care.' },
     { key: 'ROLE_FINANCE', label: 'Finance', description: 'Expense verification, reimbursements, budgets and financial reporting.' },
-    { key: 'ROLE_SUPPORT', label: 'Support', description: 'Traveler assistance, itinerary support, incidents and alerts.' }
+    { key: 'ROLE_SUPPORT', label: 'Support', description: 'Travel-agent operations, booking coordination, traveler assistance, documents, incidents and alerts.' }
   ]);
 
   /* ----------------------------------------------------------------------
      Premium UI layer: splash, safe 3D tilt, ripple feedback, scroll glow,
-     animated counters and accessible motion controls. No business logic is
-     changed by this layer.
+     animated counters and accessible motion controls.
      ---------------------------------------------------------------------- */
   function bootPremiumUI() {
     if (document.documentElement.dataset.premiumUi === 'true') return;
