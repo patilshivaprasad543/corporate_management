@@ -16,12 +16,11 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "Authentication", description = "User registration, login, JWT token issuance, and role switching")
+@Tag(name = "Authentication", description = "User registration, login, JWT token issuance, and credential management")
 public class AuthController {
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
-
 
     private final AuthService authService;
 
@@ -35,6 +34,20 @@ public class AuthController {
     @Operation(summary = "Register a new corporate employee / manager")
     public ResponseEntity<ApiResponse<AuthDto.AuthResponse>> register(@Valid @RequestBody AuthDto.RegisterRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(authService.register(request), "User registered successfully"));
+    }
+
+    @PostMapping("/change-password")
+    @Operation(summary = "Change the authenticated user's password")
+    public ResponseEntity<ApiResponse<Object>> changePassword(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody Map<String, String> request) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication is required"));
+        }
+        String currentPassword = request != null ? request.get("currentPassword") : null;
+        String newPassword = request != null ? request.get("newPassword") : null;
+        authService.changePassword(principal.getId(), currentPassword, newPassword);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Password changed successfully. Please sign in again."));
     }
 
     @GetMapping("/me")
@@ -52,5 +65,4 @@ public class AuthController {
         map.put("authorities", principal.getAuthorities());
         return ResponseEntity.ok(ApiResponse.ok(map, "Profile retrieved"));
     }
-
 }
