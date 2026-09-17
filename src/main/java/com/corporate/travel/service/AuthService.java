@@ -45,7 +45,6 @@ public class AuthService {
         this.auditService = auditService;
     }
 
-
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -91,11 +90,7 @@ public class AuthService {
             throw new BadRequestException("Email is already registered");
         }
 
-        // Public registration may only create a traveler. Elevated roles are
-        // provisioned by an organization administrator through a controlled
-        // user-management workflow.
         RoleType roleType = RoleType.ROLE_EMPLOYEE;
-
         Role userRole = roleRepository.findByName(roleType)
                 .orElseGet(() -> roleRepository.save(Role.builder().name(RoleType.ROLE_EMPLOYEE).description("Employee").build()));
 
@@ -122,7 +117,6 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
 
-        // Initialize Travel Wallet
         walletRepository.save(TravelWallet.builder()
                 .user(savedUser)
                 .allocatedBudget(BigDecimal.valueOf(300000))
@@ -149,5 +143,29 @@ public class AuthService {
                 .organizationName(org != null ? org.getName() : "Enterprise SaaS")
                 .roles(savedUser.getRoles().stream().map(r -> r.getName().name()).collect(Collectors.toSet()))
                 .build();
+    }
+
+    @Transactional
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        if (currentPassword == null || currentPassword.isBlank()) {
+            throw new BadRequestException("Current password is required");
+        }
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new BadRequestException("New password must contain at least 8 characters");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new BadRequestException("Current password is incorrect");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new BadRequestException("New password must be different from the current password");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        auditService.logAction(user.getEmail(), "PASSWORD_CHANGED", "USER", user.getId(), "User changed their login password", null);
     }
 }
