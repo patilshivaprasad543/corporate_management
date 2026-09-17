@@ -49,20 +49,14 @@
     ];
   }
 
-  // The role selector is a presentation control; keep it aligned with the
-  // six portal contract even though the backend retains legacy authorities.
   const selector = document.getElementById('roleSelector');
   if (selector) {
     Array.from(selector.options).forEach(function (option) {
       if (!visibleRoles.has(option.value)) option.remove();
     });
     const labels = {
-      ROLE_COMPANY_ADMIN: 'Admin',
-      ROLE_EMPLOYEE: 'Employee',
-      ROLE_APPROVER: 'Manager',
-      ROLE_HR: 'HR',
-      ROLE_FINANCE: 'Finance',
-      ROLE_SUPPORT: 'Support'
+      ROLE_COMPANY_ADMIN: 'Admin', ROLE_EMPLOYEE: 'Employee', ROLE_APPROVER: 'Manager',
+      ROLE_HR: 'HR', ROLE_FINANCE: 'Finance', ROLE_SUPPORT: 'Support'
     };
     Array.from(selector.options).forEach(function (option) {
       if (labels[option.value]) option.textContent = labels[option.value];
@@ -77,4 +71,111 @@
     { key: 'ROLE_FINANCE', label: 'Finance', description: 'Expense verification, reimbursements, budgets and financial reporting.' },
     { key: 'ROLE_SUPPORT', label: 'Support', description: 'Traveler assistance, itinerary support, incidents and alerts.' }
   ]);
+
+  /* ----------------------------------------------------------------------
+     Premium UI layer: splash, safe 3D tilt, ripple feedback, scroll glow,
+     animated counters and accessible motion controls. No business logic is
+     changed by this layer.
+     ---------------------------------------------------------------------- */
+  function bootPremiumUI() {
+    if (document.documentElement.dataset.premiumUi === 'true') return;
+    document.documentElement.dataset.premiumUi = 'true';
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (!document.querySelector('.ct360-splash')) {
+      const splash = document.createElement('div');
+      splash.className = 'ct360-splash';
+      splash.setAttribute('aria-label', 'Loading Corporate Travel 360');
+      splash.innerHTML = '<div class="ct360-splash-orb ct360-splash-orb-a"></div>' +
+        '<div class="ct360-splash-orb ct360-splash-orb-b"></div>' +
+        '<div class="ct360-splash-core"><div class="ct360-logo-mark">✦</div>' +
+        '<div class="ct360-splash-title">CorporateTravel<span>360</span></div>' +
+        '<div class="ct360-splash-subtitle">Enterprise Travel & Expense Platform</div>' +
+        '<div class="ct360-splash-loader"><i></i></div></div>';
+      document.body.prepend(splash);
+      window.setTimeout(function () { splash.classList.add('is-hidden'); }, reduceMotion ? 250 : 1200);
+      window.setTimeout(function () { splash.remove(); }, reduceMotion ? 500 : 1800);
+    }
+
+    const candidates = document.querySelectorAll('.glass-panel, .card-3d, .flow-step-node, .module-card, .stat-card');
+    candidates.forEach(function (el) {
+      if (!el.classList.contains('card-3d')) el.classList.add('card-3d');
+      if (!el.querySelector(':scope > .card-3d-content')) {
+        const children = Array.from(el.childNodes);
+        if (children.length) {
+          const wrap = document.createElement('div');
+          wrap.className = 'card-3d-content';
+          children.forEach(function (child) { wrap.appendChild(child); });
+          el.appendChild(wrap);
+        }
+      }
+    });
+
+    if (!reduceMotion) {
+      document.addEventListener('pointermove', function (event) {
+        const card = event.target.closest('.card-3d[data-tilt], .glass-panel[data-tilt]');
+        if (!card || window.innerWidth < 768) return;
+        const rect = card.getBoundingClientRect();
+        if (rect.width < 80 || rect.height < 60) return;
+        const x = (event.clientX - rect.left) / rect.width - 0.5;
+        const y = (event.clientY - rect.top) / rect.height - 0.5;
+        card.style.setProperty('--tilt-x', (y * -3.2).toFixed(2) + 'deg');
+        card.style.setProperty('--tilt-y', (x * 3.2).toFixed(2) + 'deg');
+      }, { passive: true });
+      document.addEventListener('pointerout', function (event) {
+        const card = event.target.closest('.card-3d[data-tilt], .glass-panel[data-tilt]');
+        if (card && !card.contains(event.relatedTarget)) {
+          card.style.removeProperty('--tilt-x');
+          card.style.removeProperty('--tilt-y');
+        }
+      }, { passive: true });
+    }
+
+    document.addEventListener('pointerdown', function (event) {
+      const target = event.target.closest('button, [role="button"], .btn-gradient-primary');
+      if (!target || reduceMotion) return;
+      const rect = target.getBoundingClientRect();
+      const ripple = document.createElement('span');
+      ripple.className = 'ct360-ripple';
+      ripple.style.left = (event.clientX - rect.left) + 'px';
+      ripple.style.top = (event.clientY - rect.top) + 'px';
+      target.appendChild(ripple);
+      window.setTimeout(function () { ripple.remove(); }, 650);
+    }, { passive: true });
+
+    let progress = document.querySelector('.ct360-scroll-progress');
+    if (!progress) {
+      progress = document.createElement('div');
+      progress.className = 'ct360-scroll-progress';
+      document.body.appendChild(progress);
+    }
+    const updateProgress = function () {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      progress.style.transform = 'scaleX(' + (max > 0 ? window.scrollY / max : 0) + ')';
+    };
+    window.addEventListener('scroll', updateProgress, { passive: true });
+    updateProgress();
+
+    document.querySelectorAll('[data-animate-number]').forEach(function (el) {
+      if (el.dataset.animated === 'true') return;
+      const target = Number(String(el.textContent).replace(/[^0-9.-]/g, ''));
+      if (!Number.isFinite(target)) return;
+      el.dataset.animated = 'true';
+      if (reduceMotion) return;
+      const start = performance.now();
+      const duration = 850;
+      const tick = function (now) {
+        const p = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(target * eased).toLocaleString('en-IN');
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      el.textContent = '0';
+      requestAnimationFrame(tick);
+    });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootPremiumUI, { once: true });
+  else bootPremiumUI();
 })();
