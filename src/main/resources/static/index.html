@@ -14,11 +14,25 @@
         extend: {
           colors: {
             brand: {
-              50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
-              400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
-              800: '#3730a3', 900: '#312e81', 950: '#1e1b4b'
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              300: '#a5b4fc',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+              950: '#1e1b4b'
             },
-            dark: { 900: '#070d1e', 800: '#0b132b', 700: '#1c2541', 600: '#3a506b', 500: '#5bc0be' }
+            dark: {
+              900: '#070d1e',
+              800: '#0b132b',
+              700: '#1c2541',
+              600: '#3a506b',
+              500: '#5bc0be'
+            }
           }
         }
       }
@@ -27,47 +41,131 @@
 
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <!-- SockJS & StompJS for WebSocket -->
   <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="bg-dark-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Top Announcement / Live Flight Alert Banner -->
   <div id="topAlertBanner" class="bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 px-4 py-2 text-xs font-medium text-indigo-200 border-b border-indigo-500/20 flex items-center justify-between no-print">
     <div class="flex items-center gap-2">
-      <span class="flex h-2 w-2 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
+      <span class="flex h-2 w-2 relative">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+      </span>
       <span><strong>DEMO ENVIRONMENT:</strong> Search results and travel advisories use test-provider data unless a live provider is configured.</span>
     </div>
-    <div class="flex items-center gap-4"><a href="/swagger-ui/index.html" target="_blank" class="hover:text-white flex items-center gap-1 underline underline-offset-2"><i data-lucide="file-code-2" class="w-3.5 h-3.5"></i> Swagger API Docs</a></div>
+    <div class="flex items-center gap-4">
+      <a href="/swagger-ui/index.html" target="_blank" class="hover:text-white flex items-center gap-1 underline underline-offset-2">
+        <i data-lucide="file-code-2" class="w-3.5 h-3.5"></i> Swagger API Docs
+      </a>
+    </div>
   </div>
 
+  <!-- Header / Navigation Bar -->
   <header class="bg-dark-800/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-4 lg:px-8 py-3 flex items-center justify-between no-print">
+    <!-- Brand Logo -->
     <div class="flex items-center gap-3">
-      <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30"><i data-lucide="plane-takeoff" class="w-6 h-6"></i></div>
-      <div><div class="flex items-center gap-2"><h1 class="font-extrabold text-lg tracking-tight text-white">CorporateTravel<span class="text-indigo-400">360</span></h1><span class="text-[9px] px-2 py-0.5 rounded-full border border-indigo-500/30 text-indigo-300">ENTERPRISE</span></div><p class="text-[10px] text-slate-500 uppercase tracking-widest">Travel & Expense Management</p></div>
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+        <i data-lucide="plane-takeoff" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-indigo-300">
+            AeroCorp Travel
+          </span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-semibold border border-brand-500/30">
+            ENTERPRISE SaaS
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400 font-medium">Acme Global Technologies Inc.</p>
+      </div>
     </div>
-    <div id="headerActions" class="flex items-center gap-2"></div>
+
+    <!-- Center Mode Switch & Interactive Flow Stepper Controller -->
+    <div class="hidden md:flex items-center gap-2">
+      <div class="flex items-center bg-dark-900/90 p-1 rounded-xl border border-indigo-500/40 shadow-md">
+        <button onclick="autoPlayFlow()" id="btnAutoPlayFlow" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white hover:brightness-110 shadow-sm">
+          <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i> Auto-Play Flow
+        </button>
+        <button onclick="goToFlowStep(1)" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-indigo-300 hover:text-white transition-all">
+          <i data-lucide="git-merge" class="w-3.5 h-3.5"></i> 8-Step Lifecycle
+        </button>
+      </div>
+      <div class="flex items-center bg-dark-900 p-1 rounded-xl border border-slate-800">
+        <button id="btnModeCorporate" onclick="switchTravelMode(false)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white shadow-sm">
+          <i data-lucide="building-2" class="w-3.5 h-3.5"></i> Corporate
+        </button>
+        <button id="btnModePersonal" onclick="switchTravelMode(true)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all">
+          <i data-lucide="user" class="w-3.5 h-3.5"></i> Personal
+        </button>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <select id="currencySelector" onchange="changeCurrency(this.value)" class="bg-dark-900 text-xs font-semibold text-slate-300 border border-slate-700 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none">
+        <option value="INR">₹ INR</option><option value="USD">$ USD</option><option value="EUR">€ EUR</option><option value="GBP">£ GBP</option>
+      </select>
+      <div class="flex items-center gap-1.5 bg-dark-900 border border-indigo-500/40 px-2 py-1 rounded-xl">
+        <span class="text-[11px] font-semibold text-indigo-300 flex items-center gap-1"><i data-lucide="shield" class="w-3.5 h-3.5 text-indigo-400"></i> Role:</span>
+        <select id="roleSelector" onchange="switchDemoRole(this.value)" class="bg-transparent text-xs font-bold text-white border-0 focus:ring-0 outline-none cursor-pointer">
+          <option value="ROLE_EMPLOYEE" class="bg-dark-800">Employee / Traveler</option>
+          <option value="ROLE_APPROVER" class="bg-dark-800">Manager</option>
+          <option value="ROLE_TRAVEL_MANAGER" class="bg-dark-800">Travel Manager</option>
+          <option value="ROLE_FINANCE" class="bg-dark-800">Finance & Reimbursement</option>
+          <option value="ROLE_COMPANY_ADMIN" class="bg-dark-800">Admin</option>
+          <option value="ROLE_SUPER_ADMIN" class="bg-dark-800">Super Admin (Internal)</option>
+          <option value="ROLE_HR" class="bg-dark-800">HR</option>
+          <option value="ROLE_VENDOR" class="bg-dark-800">Vendor (Internal)</option>
+          <option value="ROLE_SUPPORT" class="bg-dark-800">Support</option>
+        </select>
+      </div>
+      <button onclick="openLoginPortalModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:brightness-110 text-white font-bold text-xs shadow-md transition" title="Open Enterprise Login & Role Switcher"><i data-lucide="log-in" class="w-3.5 h-3.5"></i><span>Login Portal</span></button>
+      <button onclick="openAllModulesModal()" class="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-dark-900 hover:bg-dark-700 border border-slate-700 text-indigo-300 hover:text-white font-semibold text-xs transition"><i data-lucide="layout-grid" class="w-3.5 h-3.5"></i><span>Modules</span></button>
+      <button onclick="toggleNotificationsModal()" class="relative p-2 rounded-xl bg-dark-900 hover:bg-dark-700 border border-slate-800 text-slate-300 hover:text-white transition"><i data-lucide="bell" class="w-4 h-4"></i><span id="notifBadge" class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-[9px] font-bold flex items-center justify-center text-white">3</span></button>
+      <div onclick="navigateToTab('login-portal')" class="flex items-center gap-2.5 pl-2 border-l border-slate-800 cursor-pointer hover:opacity-80 transition" title="Click to open Login Portal / Switch Profile"><div id="userAvatar" class="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white font-bold text-xs shadow-md">PS</div><div class="hidden lg:block text-left"><p id="userNameDisplay" class="text-xs font-bold text-white">Priya Sharma</p><p id="userRoleBadge" class="text-[10px] text-emerald-400 font-semibold">Sr. Architect (Engineering)</p></div></div>
+      <button id="headerLogoutBtn" onclick="handleLogout()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 text-xs font-bold transition shadow-sm" title="Lock session and log out"><i data-lucide="log-out" class="w-3.5 h-3.5"></i><span>Logout</span></button>
+    </div>
   </header>
 
-  <div id="app" class="flex flex-1 min-h-0">
-    <aside id="sidebar" class="w-72 bg-dark-800/80 border-r border-slate-800 flex flex-col no-print">
-      <div id="sidebarHeader" class="p-4 border-b border-slate-800"></div>
-      <nav id="mainNav" class="flex-1 overflow-y-auto p-3 space-y-1"></nav>
-      <div id="sidebarFooter" class="p-3 border-t border-slate-800"></div>
+  <div class="bg-dark-950/90 border-b border-slate-800/80 px-4 lg:px-8 py-2 overflow-x-auto no-scrollbar flex items-center gap-2 text-xs font-semibold shrink-0 no-print" id="topModuleStrip">
+    <span class="text-[10px] uppercase font-bold text-indigo-400 tracking-wider shrink-0 mr-1 flex items-center gap-1"><i data-lucide="shield" class="w-3.5 h-3.5 text-indigo-400"></i> <span id="stripRoleName">EMPLOYEE PORTAL</span>:</span>
+    <button onclick="navigateToTab('login-portal')" id="strip-login-portal" class="strip-btn px-3.5 py-1 rounded-lg bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:brightness-110 text-white font-bold flex items-center gap-1.5 shrink-0 transition shadow-sm"><i data-lucide="shield-check" class="w-3.5 h-3.5"></i> 🔐 Login & Roles Portal</button>
+    <button onclick="navigateToTab('dashboard')" id="strip-dashboard" class="strip-btn px-3 py-1 rounded-lg bg-indigo-600 text-white flex items-center gap-1.5 shrink-0 transition"><i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Dashboard</button>
+    <button onclick="navigateToTab('search')" id="strip-search" class="strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition"><i data-lucide="search" class="w-3.5 h-3.5"></i> Book Travel</button>
+    <button onclick="navigateToTab('requests')" id="strip-requests" class="strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition"><i data-lucide="file-text" class="w-3.5 h-3.5"></i> Travel Requests</button>
+    <button onclick="navigateToTab('approvals')" id="strip-approvals" class="strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition"><i data-lucide="check-square" class="w-3.5 h-3.5"></i> Approvals Hub</button>
+    <button onclick="navigateToTab('itinerary')" id="strip-itinerary" class="strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition"><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i> Itinerary & PNR</button>
+    <button onclick="navigateToTab('expenses')" id="strip-expenses" class="strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition"><i data-lucide="receipt" class="w-3.5 h-3.5"></i> Expenses & OCR</button>
+    <button onclick="navigateToTab('ai-assistant')" id="strip-ai-assistant" class="strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition"><i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i> AI Assistant</button>
+    <button onclick="navigateToTab('risk')" id="strip-risk" class="strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition"><i data-lucide="shield-alert" class="w-3.5 h-3.5 text-amber-400"></i> Duty of Care</button>
+    <button onclick="navigateToTab('analytics')" id="strip-analytics" class="strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition"><i data-lucide="bar-chart-3" class="w-3.5 h-3.5 text-cyan-400"></i> BI Analytics</button>
+    <button onclick="navigateToTab('settings')" id="strip-settings" class="strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition"><i data-lucide="settings" class="w-3.5 h-3.5"></i> Settings</button>
+    <button onclick="navigateToTab('audit')" id="strip-audit" class="strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i> Audit Log</button>
+  </div>
+
+  <div class="flex flex-1 overflow-hidden">
+    <aside class="w-64 bg-dark-800 border-r border-slate-800/80 flex flex-col justify-between p-4 shrink-0 no-print">
+      <nav class="space-y-1.5" id="navContainer"></nav>
+      <div class="p-3.5 rounded-2xl bg-gradient-to-b from-dark-700/80 to-dark-900 border border-slate-700/60 shadow-inner">
+        <div class="flex items-center justify-between mb-2"><span class="text-[11px] font-bold text-slate-400 flex items-center gap-1.5"><i data-lucide="wallet" class="w-3.5 h-3.5 text-indigo-400"></i> Travel Wallet</span><span id="walletCurrency" class="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300">INR</span></div>
+        <div class="space-y-1.5"><div class="flex justify-between text-xs"><span class="text-slate-400">Remaining:</span><span id="walletRemaining" class="font-extrabold text-emerald-400">₹3,24,200</span></div><div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden"><div id="walletProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full" style="width: 82%"></div></div><div class="flex justify-between text-[10px] text-slate-500"><span>Spent: <strong id="walletSpent" class="text-slate-300">₹25,800</strong></span><span>Allocated: <strong id="walletAllocated" class="text-slate-300">₹3,50,000</strong></span></div></div>
+      </div>
     </aside>
-    <main class="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6" id="mainContent"></main>
+    <main class="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6" id="mainContent"><!-- Active Tab View is rendered here --></main>
   </div>
 
-  <div class="fixed bottom-6 right-6 z-50 flex items-center gap-3 no-print">
-    <button onclick="openAiModal()" class="flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-bold text-sm shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-105 transition-all"><i data-lucide="sparkles" class="w-4 h-4 animate-pulse"></i> AI Assistant</button>
-    <button onclick="toggleLiveChatDrawer()" class="p-3.5 rounded-full bg-dark-800 border border-indigo-500/40 text-indigo-400 hover:text-white hover:bg-dark-700 shadow-xl transition"><i data-lucide="messages-square" class="w-5 h-5"></i></button>
-  </div>
-
+  <div class="fixed bottom-6 right-6 z-50 flex items-center gap-3 no-print"><button onclick="openAiModal()" class="flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-bold text-sm shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-105 transition-all"><i data-lucide="sparkles" class="w-4 h-4 animate-pulse"></i> AI Assistant</button><button onclick="toggleLiveChatDrawer()" class="p-3.5 rounded-full bg-dark-800 border border-indigo-500/40 text-indigo-400 hover:text-white hover:bg-dark-700 shadow-xl transition"><i data-lucide="messages-square" class="w-5 h-5"></i></button></div>
   <div id="modalContainer" class="relative z-50"></div>
   <div id="notifModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-end p-4"><div class="w-full max-w-md bg-dark-800 border border-slate-700 rounded-2xl shadow-2xl p-6 h-[80vh] flex flex-col"><div class="flex items-center justify-between pb-4 border-b border-slate-700"><div class="flex items-center gap-2"><i data-lucide="bell" class="w-5 h-5 text-indigo-400"></i><h3 class="font-bold text-lg text-white">Notifications & Alerts</h3></div><button onclick="toggleNotificationsModal()" class="text-slate-400 hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button></div><div id="notifListContainer" class="flex-1 overflow-y-auto py-4 space-y-3"></div></div></div>
-  <div id="chatDrawer" class="hidden fixed bottom-24 right-6 w-96 bg-dark-800 border border-slate-700 rounded-2xl shadow-2xl z-50 flex flex-col h-[520px]"><div class="p-4 bg-gradient-to-r from-indigo-900 to-slate-900 rounded-t-2xl border-b border-slate-700 flex items-center justify-between"><div class="flex items-center gap-2.5"><div class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></div><div><h4 class="font-bold text-sm text-white">Live Corporate Support</h4><p class="text-[10px] text-indigo-300">24/7 Traveler Care Desk</p></div></div><button onclick="toggleLiveChatDrawer()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button></div><div id="chatMessagesBox" class="flex-1 overflow-y-auto p-4 space-y-3 text-xs"></div><div class="p-3 border-t border-slate-700 flex items-center gap-2"><input id="chatInputText" type="text" placeholder="Type message..." onkeydown="if(event.key==='Enter') sendChatMessage()" class="flex-1 bg-dark-900 text-xs text-white border border-slate-700 rounded-xl px-3 py-2 outline-none focus:border-indigo-500"><button onclick="sendChatMessage()" class="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition"><i data-lucide="send" class="w-4 h-4"></i></button></div></div>
+  <div id="chatDrawer" class="hidden fixed bottom-24 right-6 w-96 bg-dark-800 border border-slate-700 rounded-2xl shadow-2xl z-50 flex flex-col h-[520px]"><div class="p-4 bg-gradient-to-r from-indigo-900 to-slate-900 rounded-t-2xl border-b border-slate-700 flex items-center justify-between"><div class="flex items-center gap-2.5"><div class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></div><div><h4 class="font-bold text-sm text-white">Live Corporate Support</h4><p class="text-[10px] text-indigo-300">Agent: James Wilson (24/7 Desk)</p></div></div><button onclick="toggleLiveChatDrawer()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button></div><div id="chatMessagesBox" class="flex-1 overflow-y-auto p-4 space-y-3 text-xs"><div class="flex gap-2"><div class="h-6 w-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold">CS</div><div class="bg-dark-700 p-2.5 rounded-xl rounded-tl-none max-w-[80%] text-slate-200">Hello Priya! I see you have an upcoming flight AI-839 to Delhi. How can I assist with your itinerary or corporate hotel booking?</div></div></div><div class="p-3 border-t border-slate-700 flex items-center gap-2"><input id="chatInputText" type="text" placeholder="Type message..." onkeydown="if(event.key==='Enter') sendChatMessage()" class="flex-1 bg-dark-900 text-xs text-white border border-slate-700 rounded-xl px-3 py-2 outline-none focus:border-indigo-500"><button onclick="sendChatMessage()" class="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition"><i data-lucide="send" class="w-4 h-4"></i></button></div></div>
 
   <script src="/app.js"></script>
   <script src="/portal-policy.js"></script>
