@@ -124,117 +124,117 @@ const ROLE_THEMES = {
   ROLE_EMPLOYEE: {
     portalName: 'Employee Traveler Portal',
     shortName: 'Traveler',
-    gradient: 'from-indigo-600 via-blue-600 to-cyan-500',
-    cardGradient: 'from-indigo-500/20 via-blue-500/10 to-cyan-500/10',
-    accent: 'indigo',
-    accentText: 'text-indigo-300',
-    accentBg: 'bg-indigo-500/15',
-    border: 'border-indigo-500/40',
-    glow: 'portal-glow-indigo',
+    gradient: 'from-brand-800 via-brand-600 to-brand-500',
+    cardGradient: 'from-brand-500/20 via-brand-500/10 to-brand-400/10',
+    accent: 'brand',
+    accentText: 'text-brand-600',
+    accentBg: 'bg-brand-500/15',
+    border: 'border-brand-500/35',
+    glow: 'portal-glow-primary',
     icon: 'plane',
     tagline: 'Search flights, submit requests, and manage your business travel wallet.'
   },
   ROLE_APPROVER: {
     portalName: 'Line Manager Approver Portal',
     shortName: 'Approver',
-    gradient: 'from-amber-500 via-orange-600 to-rose-500',
-    cardGradient: 'from-amber-500/20 via-orange-500/10 to-rose-500/10',
-    accent: 'amber',
-    accentText: 'text-amber-300',
-    accentBg: 'bg-amber-500/15',
-    border: 'border-amber-500/40',
-    glow: 'portal-glow-amber',
+    gradient: 'from-accent-600 via-accent-500 to-brand-700',
+    cardGradient: 'from-accent-500/20 via-accent-500/10 to-brand-500/10',
+    accent: 'accent',
+    accentText: 'text-accent-600',
+    accentBg: 'bg-accent-500/15',
+    border: 'border-accent-500/35',
+    glow: 'portal-glow-secondary',
     icon: 'check-square',
     tagline: 'Review team travel requests, approve budgets, and enforce policy compliance.'
   },
   ROLE_TRAVEL_MANAGER: {
     portalName: 'Travel Operations Portal',
     shortName: 'Travel Ops',
-    gradient: 'from-violet-600 via-purple-600 to-fuchsia-500',
-    cardGradient: 'from-violet-500/20 via-purple-500/10 to-fuchsia-500/10',
-    accent: 'violet',
-    accentText: 'text-violet-300',
-    accentBg: 'bg-violet-500/15',
-    border: 'border-violet-500/40',
-    glow: 'portal-glow-violet',
+    gradient: 'from-brand-700 via-brand-500 to-brand-400',
+    cardGradient: 'from-brand-500/20 via-brand-400/10 to-brand-300/10',
+    accent: 'brand',
+    accentText: 'text-brand-600',
+    accentBg: 'bg-brand-500/15',
+    border: 'border-brand-500/35',
+    glow: 'portal-glow-primary',
     icon: 'globe-2',
     tagline: 'Operate corporate booking desk, monitor active trips, and manage travel spend.'
   },
   ROLE_FINANCE: {
     portalName: 'Finance & Reimbursement Portal',
     shortName: 'Finance',
-    gradient: 'from-emerald-600 via-teal-600 to-green-500',
-    cardGradient: 'from-emerald-500/20 via-teal-500/10 to-green-500/10',
-    accent: 'emerald',
-    accentText: 'text-emerald-300',
-    accentBg: 'bg-emerald-500/15',
-    border: 'border-emerald-500/40',
-    glow: 'portal-glow-emerald',
+    gradient: 'from-brand-900 via-brand-700 to-accent-500',
+    cardGradient: 'from-brand-500/20 via-brand-500/10 to-accent-500/10',
+    accent: 'brand',
+    accentText: 'text-brand-700',
+    accentBg: 'bg-brand-500/15',
+    border: 'border-brand-500/35',
+    glow: 'portal-glow-primary',
     icon: 'wallet',
     tagline: 'Audit expense claims, approve reimbursements, and track financial compliance.'
   },
   ROLE_COMPANY_ADMIN: {
     portalName: 'Company Admin Command Center',
     shortName: 'Admin',
-    gradient: 'from-sky-600 via-blue-700 to-indigo-700',
-    cardGradient: 'from-sky-500/20 via-blue-500/10 to-indigo-500/10',
-    accent: 'sky',
-    accentText: 'text-sky-300',
-    accentBg: 'bg-sky-500/15',
-    border: 'border-sky-500/40',
-    glow: 'portal-glow-sky',
+    gradient: 'from-brand-950 via-brand-800 to-brand-600',
+    cardGradient: 'from-brand-500/20 via-brand-500/10 to-brand-400/10',
+    accent: 'brand',
+    accentText: 'text-brand-600',
+    accentBg: 'bg-brand-500/15',
+    border: 'border-brand-500/35',
+    glow: 'portal-glow-primary',
     icon: 'building-2',
     tagline: 'Configure policies, oversee company travel programs, and manage cost centers.'
   },
   ROLE_SUPER_ADMIN: {
     portalName: 'Platform Super Admin Portal',
     shortName: 'Super Admin',
-    gradient: 'from-rose-600 via-pink-600 to-purple-600',
-    cardGradient: 'from-rose-500/20 via-pink-500/10 to-purple-500/10',
-    accent: 'rose',
-    accentText: 'text-rose-300',
-    accentBg: 'bg-rose-500/15',
-    border: 'border-rose-500/40',
-    glow: 'portal-glow-rose',
+    gradient: 'from-accent-600 via-brand-800 to-brand-950',
+    cardGradient: 'from-accent-500/20 via-brand-500/10 to-brand-500/10',
+    accent: 'accent',
+    accentText: 'text-accent-600',
+    accentBg: 'bg-accent-500/15',
+    border: 'border-accent-500/35',
+    glow: 'portal-glow-secondary',
     icon: 'crown',
     tagline: 'Multi-tenant platform operations, global analytics, and system configuration.'
   },
   ROLE_HR: {
     portalName: 'HR Travel & Duty of Care Portal',
     shortName: 'HR',
-    gradient: 'from-pink-600 via-rose-500 to-orange-400',
-    cardGradient: 'from-pink-500/20 via-rose-500/10 to-orange-400/10',
-    accent: 'pink',
-    accentText: 'text-pink-300',
-    accentBg: 'bg-pink-500/15',
-    border: 'border-pink-500/40',
-    glow: 'portal-glow-pink',
+    gradient: 'from-accent-500 via-brand-600 to-brand-800',
+    cardGradient: 'from-accent-500/15 via-brand-500/10 to-brand-500/10',
+    accent: 'accent',
+    accentText: 'text-accent-600',
+    accentBg: 'bg-accent-500/15',
+    border: 'border-accent-500/35',
+    glow: 'portal-glow-secondary',
     icon: 'heart-handshake',
     tagline: 'Monitor employee travel logs, onboarding, and duty-of-care compliance.'
   },
   ROLE_VENDOR: {
     portalName: 'Airline Partner Portal',
     shortName: 'Vendor',
-    gradient: 'from-orange-500 via-amber-500 to-yellow-400',
-    cardGradient: 'from-orange-500/20 via-amber-500/10 to-yellow-400/10',
-    accent: 'orange',
-    accentText: 'text-orange-300',
-    accentBg: 'bg-orange-500/15',
-    border: 'border-orange-500/40',
-    glow: 'portal-glow-orange',
+    gradient: 'from-brand-600 via-accent-500 to-brand-800',
+    cardGradient: 'from-brand-500/15 via-accent-500/10 to-brand-500/10',
+    accent: 'brand',
+    accentText: 'text-brand-600',
+    accentBg: 'bg-brand-500/15',
+    border: 'border-brand-500/35',
+    glow: 'portal-glow-primary',
     icon: 'building',
     tagline: 'Manage negotiated inventory, corporate rates, and booking settlements.'
   },
   ROLE_SUPPORT: {
     portalName: '24/7 Traveler Care Portal',
     shortName: 'Support',
-    gradient: 'from-cyan-600 via-teal-500 to-emerald-500',
-    cardGradient: 'from-cyan-500/20 via-teal-500/10 to-emerald-500/10',
-    accent: 'cyan',
-    accentText: 'text-cyan-300',
-    accentBg: 'bg-cyan-500/15',
-    border: 'border-cyan-500/40',
-    glow: 'portal-glow-cyan',
+    gradient: 'from-brand-500 via-brand-600 to-brand-800',
+    cardGradient: 'from-brand-500/20 via-brand-500/10 to-brand-400/10',
+    accent: 'brand',
+    accentText: 'text-brand-600',
+    accentBg: 'bg-brand-500/15',
+    border: 'border-brand-500/35',
+    glow: 'portal-glow-primary',
     icon: 'headphones',
     tagline: 'Emergency response, live traveler support, and itinerary assistance.'
   }
@@ -610,7 +610,7 @@ function updateTopStripActiveState(tabId) {
       document.querySelectorAll('.strip-btn').forEach(btn => {
         if (btn.id === 'strip-login-portal') {
           btn.style.display = 'inline-flex';
-          btn.className = 'strip-btn px-4 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-bold shadow-lg shadow-indigo-500/30 flex items-center gap-1.5 shrink-0 transition text-xs';
+          btn.className = 'strip-btn px-4 py-1.5 rounded-lg bg-accent-500 text-white font-bold shadow-md flex items-center gap-1.5 shrink-0 transition text-xs';
         } else {
           btn.style.display = 'none'; // Lock all other module buttons!
         }
@@ -633,7 +633,7 @@ function updateTopStripActiveState(tabId) {
       if (allowed.includes(btnTab)) {
         btn.style.display = 'inline-flex';
         if (btnTab === tabId) {
-          btn.className = 'strip-btn px-3.5 py-1 rounded-lg bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 shrink-0 transition text-xs font-bold';
+          btn.className = 'strip-btn px-3.5 py-1 rounded-lg bg-accent-500 text-white shadow-md flex items-center gap-1.5 shrink-0 transition text-xs font-bold';
         } else {
           btn.className = 'strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition text-xs font-semibold';
         }
@@ -653,12 +653,12 @@ function renderNavigation() {
       <div class="px-2 py-1 mb-2 text-[10px] font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
         <i data-lucide="lock" class="w-3 h-3 text-rose-400"></i> ACCESS RESTRICTED
       </div>
-      <button onclick="navigateToTab('login-portal')" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg shadow-indigo-600/30">
+      <button onclick="navigateToTab('login-portal')" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all bg-accent-500 text-white shadow-md">
         <div class="flex items-center gap-3">
           <i data-lucide="shield-check" class="w-4 h-4"></i>
-          <span>🔐 Login & Roles Portal</span>
+          <span>Login & Roles Portal</span>
         </div>
-        <span class="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-white text-indigo-900">Sign In</span>
+        <span class="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-white text-brand-800">Sign In</span>
       </button>
 
       <div class="p-3.5 mt-4 rounded-xl bg-dark-900/90 border border-slate-800 text-slate-400 text-center">
@@ -684,7 +684,7 @@ function renderNavigation() {
     </div>
 
     ${items.map(item => `
-      <button onclick="navigateToTab('${item.id}')" class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${STATE.activeTab === item.id ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 font-bold' : 'text-slate-400 hover:bg-dark-700 hover:text-slate-100'}">
+      <button onclick="navigateToTab('${item.id}')" class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${STATE.activeTab === item.id ? 'bg-accent-500 text-white shadow-md font-bold' : 'text-slate-500 hover:bg-brand-50 hover:text-brand-700'}">
         <div class="flex items-center gap-3">
           <i data-lucide="${item.icon}" class="w-4 h-4"></i>
           <span class="truncate">${item.label}</span>
