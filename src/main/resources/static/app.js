@@ -13,17 +13,52 @@ const STATE = {
   currencySymbol: '₹',
   exchangeRates: { INR: 1, USD: 0.012, EUR: 0.011, GBP: 0.0095 },
   isPersonalMode: false,
-  notifications: [
-    { id: 1, title: 'Travel Request Approved', desc: 'Request TR-1082 (Delhi Summit) approved by Line Manager & Finance.', type: 'APPROVED', time: '10m ago' },
-    { id: 2, title: 'Booking Confirmed - PNR683921', desc: 'Air India AI-839 e-ticket issued for Delhi departure.', type: 'BOOKING', time: '1h ago' },
-    { id: 3, title: 'Transit Advisory in Paris', desc: 'Regional rail strike alert active for Paris business travel.', type: 'ALERT', time: '2h ago' }
-  ],
+  notifications: [],
   requests: [],
   bookings: [],
   expenses: [],
   riskAlerts: [],
-  auditLogs: []
+  auditLogs: [],
+  chatConversation: null,
+  chatHubs: [],
+  chatStomp: null,
+  splashDismissed: localStorage.getItem('corporate_splash_seen') === 'true',
+  chatChannel: 'SUPPORT',
+  emailNotificationsEnabled: localStorage.getItem('corporate_email_notif') !== 'false',
+  requestWizardStep: 1,
+  approvalFilter: 'travel',
+  fabOpen: false,
+  profileSheetOpen: false
 };
+
+// Realistic travel imagery (Unsplash URLs used by backend seed/search + local workflow reference)
+const WORKFLOW_IMAGES = {
+  splash: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1920&auto=format&fit=crop&q=85',
+  login: 'https://images.unsplash.com/photo-1526778548025-fa2f288cd84f?w=1400&auto=format&fit=crop&q=85',
+  workflowReference: '/assets/workflow-reference.jpg',
+  orgLogo: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200&auto=format&fit=crop&q=85',
+  employeeBanner: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&auto=format&fit=crop&q=85',
+  flightCard: 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?w=480&auto=format&fit=crop&q=85',
+  dashboardTrip: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=900&auto=format&fit=crop&q=85',
+  hotelFallback: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=85',
+  airport: 'https://images.unsplash.com/photo-1436491865331-9a61a109fc08?w=800&auto=format&fit=crop&q=85',
+  city: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=85',
+  roles: {
+    ROLE_EMPLOYEE: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&auto=format&fit=crop&q=85',
+    ROLE_APPROVER: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&auto=format&fit=crop&q=85',
+    ROLE_TRAVEL_MANAGER: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&auto=format&fit=crop&q=85',
+    ROLE_FINANCE: 'https://images.unsplash.com/photo-1554224311-bc0212f2d511?w=1200&auto=format&fit=crop&q=85',
+    ROLE_COMPANY_ADMIN: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&auto=format&fit=crop&q=80',
+    ROLE_SUPER_ADMIN: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80',
+    ROLE_HR: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1200&auto=format&fit=crop&q=80',
+    ROLE_VENDOR: 'https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=1200&auto=format&fit=crop&q=80',
+    ROLE_SUPPORT: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=1200&auto=format&fit=crop&q=80'
+  }
+};
+
+function heroImageUrl(roleKey) {
+  return WORKFLOW_IMAGES.roles[roleKey] || WORKFLOW_IMAGES.employeeBanner;
+}
 
 // =========================================================================
 // CENTRALIZED AUTHENTICATED API FETCH HELPER
@@ -71,7 +106,7 @@ const DEMO_USERS = {
 
 // All 11 platform modules + Dedicated Login Portal
 const ALL_MODULES = [
-  { id: 'login-portal', label: '🔐 Login & Role Portal', icon: 'shield-check', desc: 'Enterprise Identity Gateway: 1-click persona switching (9 roles), JWT auth, and permissions matrix.' },
+  { id: 'login-portal', label: 'Sign in', icon: 'shield-check', desc: 'Sign in to your workspace or explore demo profiles for each team.' },
   { id: 'dashboard', label: 'Dashboard & Overview', icon: 'layout-dashboard', desc: 'Central KPI metrics, upcoming trips, and corporate spend status.' },
   { id: 'search', label: 'Book Travel (GDS Search)', icon: 'search', desc: 'Search flights, hotels & ground transportation with negotiated corporate tariffs.' },
   { id: 'requests', label: 'Travel Requests', icon: 'file-text', desc: 'Submit business travel proposals with automated policy compliance evaluation.' },
@@ -84,6 +119,166 @@ const ALL_MODULES = [
   { id: 'settings', label: 'Policy & Org Settings', icon: 'settings', desc: 'Corporate travel tiers, cost center budgets, and preferred airline/hotel contracts.' },
   { id: 'audit', label: 'Enterprise Audit Trail', icon: 'shield-check', desc: 'Immutable security log tracking bookings, auth tokens, and financial approvals.' }
 ];
+
+const ROLE_THEMES = {
+  ROLE_EMPLOYEE: {
+    portalName: 'Employee Traveler Portal',
+    shortName: 'Traveler',
+    gradient: 'from-brand-800 via-brand-600 to-brand-500',
+    cardGradient: 'from-brand-500/20 via-brand-500/10 to-brand-400/10',
+    accent: 'brand',
+    accentText: 'text-brand-600',
+    accentBg: 'bg-brand-500/15',
+    border: 'border-brand-500/35',
+    glow: 'portal-glow-primary',
+    icon: 'plane',
+    tagline: 'Search flights, submit requests, and manage your business travel wallet.'
+  },
+  ROLE_APPROVER: {
+    portalName: 'Line Manager Approver Portal',
+    shortName: 'Approver',
+    gradient: 'from-accent-600 via-accent-500 to-brand-700',
+    cardGradient: 'from-accent-500/20 via-accent-500/10 to-brand-500/10',
+    accent: 'accent',
+    accentText: 'text-accent-600',
+    accentBg: 'bg-accent-500/15',
+    border: 'border-accent-500/35',
+    glow: 'portal-glow-secondary',
+    icon: 'check-square',
+    tagline: 'Review team travel requests, approve budgets, and enforce policy compliance.'
+  },
+  ROLE_TRAVEL_MANAGER: {
+    portalName: 'Travel Operations Portal',
+    shortName: 'Travel Ops',
+    gradient: 'from-brand-700 via-brand-500 to-brand-400',
+    cardGradient: 'from-brand-500/20 via-brand-400/10 to-brand-300/10',
+    accent: 'brand',
+    accentText: 'text-brand-600',
+    accentBg: 'bg-brand-500/15',
+    border: 'border-brand-500/35',
+    glow: 'portal-glow-primary',
+    icon: 'globe-2',
+    tagline: 'Operate corporate booking desk, monitor active trips, and manage travel spend.'
+  },
+  ROLE_FINANCE: {
+    portalName: 'Finance & Reimbursement Portal',
+    shortName: 'Finance',
+    gradient: 'from-brand-900 via-brand-700 to-accent-500',
+    cardGradient: 'from-brand-500/20 via-brand-500/10 to-accent-500/10',
+    accent: 'brand',
+    accentText: 'text-brand-700',
+    accentBg: 'bg-brand-500/15',
+    border: 'border-brand-500/35',
+    glow: 'portal-glow-primary',
+    icon: 'wallet',
+    tagline: 'Audit expense claims, approve reimbursements, and track financial compliance.'
+  },
+  ROLE_COMPANY_ADMIN: {
+    portalName: 'Company Admin Command Center',
+    shortName: 'Admin',
+    gradient: 'from-brand-950 via-brand-800 to-brand-600',
+    cardGradient: 'from-brand-500/20 via-brand-500/10 to-brand-400/10',
+    accent: 'brand',
+    accentText: 'text-brand-600',
+    accentBg: 'bg-brand-500/15',
+    border: 'border-brand-500/35',
+    glow: 'portal-glow-primary',
+    icon: 'building-2',
+    tagline: 'Configure policies, oversee company travel programs, and manage cost centers.'
+  },
+  ROLE_SUPER_ADMIN: {
+    portalName: 'Platform Super Admin Portal',
+    shortName: 'Super Admin',
+    gradient: 'from-accent-600 via-brand-800 to-brand-950',
+    cardGradient: 'from-accent-500/20 via-brand-500/10 to-brand-500/10',
+    accent: 'accent',
+    accentText: 'text-accent-600',
+    accentBg: 'bg-accent-500/15',
+    border: 'border-accent-500/35',
+    glow: 'portal-glow-secondary',
+    icon: 'crown',
+    tagline: 'Multi-tenant platform operations, global analytics, and system configuration.'
+  },
+  ROLE_HR: {
+    portalName: 'HR Travel & Duty of Care Portal',
+    shortName: 'HR',
+    gradient: 'from-accent-500 via-brand-600 to-brand-800',
+    cardGradient: 'from-accent-500/15 via-brand-500/10 to-brand-500/10',
+    accent: 'accent',
+    accentText: 'text-accent-600',
+    accentBg: 'bg-accent-500/15',
+    border: 'border-accent-500/35',
+    glow: 'portal-glow-secondary',
+    icon: 'heart-handshake',
+    tagline: 'Monitor employee travel logs, onboarding, and duty-of-care compliance.'
+  },
+  ROLE_VENDOR: {
+    portalName: 'Airline Partner Portal',
+    shortName: 'Vendor',
+    gradient: 'from-brand-600 via-accent-500 to-brand-800',
+    cardGradient: 'from-brand-500/15 via-accent-500/10 to-brand-500/10',
+    accent: 'brand',
+    accentText: 'text-brand-600',
+    accentBg: 'bg-brand-500/15',
+    border: 'border-brand-500/35',
+    glow: 'portal-glow-primary',
+    icon: 'building',
+    tagline: 'Manage negotiated inventory, corporate rates, and booking settlements.'
+  },
+  ROLE_SUPPORT: {
+    portalName: '24/7 Traveler Care Portal',
+    shortName: 'Support',
+    gradient: 'from-brand-500 via-brand-600 to-brand-800',
+    cardGradient: 'from-brand-500/20 via-brand-500/10 to-brand-400/10',
+    accent: 'brand',
+    accentText: 'text-brand-600',
+    accentBg: 'bg-brand-500/15',
+    border: 'border-brand-500/35',
+    glow: 'portal-glow-primary',
+    icon: 'headphones',
+    tagline: 'Emergency response, live traveler support, and itinerary assistance.'
+  }
+};
+
+function getRoleTheme(roleKey) {
+  return ROLE_THEMES[roleKey] || ROLE_THEMES.ROLE_EMPLOYEE;
+}
+
+function renderPortalHero(roleKey, compact = false) {
+  const theme = getRoleTheme(roleKey);
+  const user = DEMO_USERS[roleKey] || STATE.currentUser;
+  const padding = compact ? 'p-5' : 'p-6 md:p-8';
+  const heroPhoto = heroImageUrl(roleKey);
+  return `
+    <div class="portal-hero rounded-3xl ${padding} mb-6 relative overflow-hidden border ${theme.border} ${theme.glow}">
+      <div class="absolute inset-0 hero-photo-layer" style="background-image: url('${heroPhoto}')"></div>
+      <div class="absolute inset-0 bg-gradient-to-br ${theme.gradient} opacity-80"></div>
+      <div class="absolute inset-0 portal-hero-pattern opacity-20"></div>
+      <div class="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl"></div>
+      <div class="absolute -left-8 bottom-0 h-32 w-32 rounded-full bg-black/20 blur-2xl"></div>
+      <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        <div class="flex items-start gap-4">
+          <div class="h-16 w-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white font-extrabold text-lg shadow-2xl shrink-0">
+            <i data-lucide="${theme.icon}" class="w-8 h-8"></i>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+              <span class="text-[10px] uppercase tracking-[0.2em] font-bold text-white/70">${theme.shortName} Portal</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/15 text-white font-bold border border-white/20">Verified</span>
+            </div>
+            <h2 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">${theme.portalName}</h2>
+            <p class="text-sm text-white/80 mt-1 max-w-2xl">${theme.tagline}</p>
+            <p class="text-xs text-white/60 mt-2">${user.name} • ${user.designation}</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2 shrink-0">
+          <span class="px-3 py-1.5 rounded-xl bg-black/20 border border-white/15 text-xs font-bold text-white">${roleKey.replace('ROLE_', '').replace('_', ' ')}</span>
+          <span class="px-3 py-1.5 rounded-xl bg-white/10 border border-white/15 text-xs font-semibold text-white/90">${(ROLE_NAVS[roleKey] || []).length - 1} tools available</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 const ROLE_NAVS = {
   ROLE_EMPLOYEE: [
@@ -181,6 +376,8 @@ const FLOW_STATE = {
 // INITIALIZATION
 // =========================================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  initSplashScreen();
+
   const savedToken = localStorage.getItem('corporate_jwt_token');
   const savedRole = localStorage.getItem('corporate_user_role');
 
@@ -207,17 +404,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateTopStripActiveState('login-portal');
     loadLoginPortalTab();
   }
+  updateFabVisibility();
   safeCreateIcons();
 });
 
 async function fetchInitialData() {
   try {
-    const [reqs, books, exps, risks, audits] = await Promise.all([
+    const [reqs, books, exps, risks, audits, notifs] = await Promise.all([
       apiFetch('/api/travel-requests'),
       apiFetch('/api/bookings'),
       apiFetch('/api/expenses'),
       apiFetch('/api/risk/alerts'),
-      apiFetch('/api/audit')
+      apiFetch('/api/audit'),
+      STATE.isAuthenticated ? apiFetch('/api/notifications') : Promise.resolve(null)
     ]);
 
     if (reqs && reqs.data) STATE.requests = reqs.data;
@@ -225,14 +424,154 @@ async function fetchInitialData() {
     if (exps && exps.data) STATE.expenses = exps.data;
     if (risks && risks.data) STATE.riskAlerts = risks.data;
     if (audits && audits.data) STATE.auditLogs = audits.data;
+    if (notifs && notifs.data) {
+      STATE.notifications = notifs.data.map(mapNotification);
+      updateNotificationBadge();
+    }
+    connectNotificationWebSocket();
   } catch (err) {
     console.warn('Initial data preload error:', err);
   }
 }
 
+function mapNotification(n) {
+  return {
+    id: n.id,
+    title: n.title,
+    desc: n.message,
+    type: n.notificationType || 'ALERT',
+    time: formatRelativeTime(n.createdAt)
+  };
+}
+
+function formatRelativeTime(isoOrDate) {
+  if (!isoOrDate) return 'Just now';
+  const date = new Date(isoOrDate);
+  const diffMs = Date.now() - date.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function updateNotificationBadge() {
+  const badge = document.getElementById('notifBadge');
+  if (!badge) return;
+  const count = STATE.notifications.length;
+  badge.textContent = count > 9 ? '9+' : String(count);
+  badge.classList.toggle('hidden', count === 0);
+}
+
+function initSplashScreen() {
+  const splash = document.getElementById('splashScreen');
+  const splashBg = document.getElementById('splashPhotoBg');
+  if (splashBg) splashBg.style.backgroundImage = `url('/travisa/img/carousel-2.jpg')`;
+  const logo = document.getElementById('siteLogoImg');
+  if (logo) logo.src = '/travisa/img/brand-logo.png';
+  if (!splash) return;
+  if (STATE.splashDismissed) {
+    splash.classList.add('splash-hidden');
+    return;
+  }
+  safeCreateIcons();
+}
+
+function dismissSplash(openPortal) {
+  const splash = document.getElementById('splashScreen');
+  if (splash) splash.classList.add('splash-hidden');
+  localStorage.setItem('corporate_splash_seen', 'true');
+  STATE.splashDismissed = true;
+  if (openPortal) {
+    navigateToTab('login-portal');
+  }
+  safeCreateIcons();
+}
+
 // =========================================================================
 // NAVIGATION & TABS SWITCHING
 // =========================================================================
+function updateMobileNav(tabId) {
+  document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabId);
+  });
+}
+
+function updateFabVisibility() {
+  const fab = document.getElementById('quickFab');
+  if (!fab) return;
+  const showFab = STATE.isAuthenticated && STATE.activeTab !== 'login-portal';
+  fab.classList.toggle('hidden', !showFab);
+}
+
+function toggleFabMenu(forceClose) {
+  const menu = document.getElementById('fabMenu');
+  const btn = document.getElementById('fabMainBtn');
+  if (!menu || !btn) return;
+  STATE.fabOpen = forceClose === true ? false : !STATE.fabOpen;
+  menu.classList.toggle('hidden', !STATE.fabOpen);
+  btn.classList.toggle('fab-open', STATE.fabOpen);
+}
+
+function runFabAction(action) {
+  toggleFabMenu(true);
+  if (action === 'request') openNewRequestModal();
+  else if (action === 'search') navigateToTab('search');
+  else if (action === 'expense') navigateToTab('expenses');
+  else if (action === 'itinerary') navigateToTab('itinerary');
+  else if (action === 'chat') toggleLiveChatDrawer();
+}
+
+function openProfileSheet() {
+  const sheet = document.getElementById('profileSheet');
+  if (!sheet) {
+    navigateToTab('login-portal');
+    return;
+  }
+  STATE.profileSheetOpen = true;
+  sheet.classList.remove('hidden');
+  renderProfileSheetContent();
+  safeCreateIcons();
+}
+
+function closeProfileSheet() {
+  const sheet = document.getElementById('profileSheet');
+  if (!sheet) return;
+  STATE.profileSheetOpen = false;
+  sheet.classList.add('hidden');
+}
+
+function renderProfileSheetContent() {
+  const container = document.getElementById('profileSheetContent');
+  if (!container) return;
+  const theme = getRoleTheme(STATE.currentRole || 'ROLE_EMPLOYEE');
+  const wallet = STATE.currentUser.wallet || { allocated: 0, spent: 0, remaining: 0 };
+  container.innerHTML = `
+    <div class="profile-sheet-hero">
+      <div class="user-avatar-ring lg mx-auto">${STATE.currentUser.avatar || 'PS'}</div>
+      <h3 class="text-lg font-extrabold text-white mt-3 text-center">${STATE.currentUser.name}</h3>
+      <p class="text-xs text-slate-400 text-center">${STATE.currentUser.designation}</p>
+      <span class="profile-role-pill">${theme.portalName}</span>
+    </div>
+    <div class="grid grid-cols-3 gap-2 my-4 text-center text-xs">
+      <div class="profile-stat-pill"><span class="text-slate-400 block">Allocated</span><strong class="text-white">${formatMoney(wallet.allocated)}</strong></div>
+      <div class="profile-stat-pill"><span class="text-slate-400 block">Spent</span><strong class="text-indigo-300">${formatMoney(wallet.spent)}</strong></div>
+      <div class="profile-stat-pill"><span class="text-slate-400 block">Remaining</span><strong class="text-emerald-400">${formatMoney(wallet.remaining)}</strong></div>
+    </div>
+    <div class="space-y-2">
+      <button onclick="closeProfileSheet(); navigateToTab('dashboard')" class="profile-sheet-action"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard</button>
+      <button onclick="closeProfileSheet(); openLoginPortalModal()" class="profile-sheet-action"><i data-lucide="shield-check" class="w-4 h-4"></i> Switch Role / Login</button>
+      <button onclick="closeProfileSheet(); handleLogout()" class="profile-sheet-action danger"><i data-lucide="log-out" class="w-4 h-4"></i> Logout</button>
+    </div>
+  `;
+}
+
+function handleMobileProfileTap() {
+  if (window.innerWidth <= 768) openProfileSheet();
+  else navigateToTab('login-portal');
+}
+
 function navigateToTab(tabId) {
   if (!STATE.isAuthenticated && tabId !== 'login-portal') {
     showToast(`🔒 Access Restricted: Please log in to unlock the '${tabId}' module.`, 'warning');
@@ -253,8 +592,12 @@ function navigateToTab(tabId) {
   }
 
   STATE.activeTab = tabId;
+  closeProfileSheet();
+  toggleFabMenu(true);
   renderNavigation();
   updateTopStripActiveState(tabId);
+  updateMobileNav(tabId);
+  updateFabVisibility();
   loadActiveTab();
 }
 
@@ -267,7 +610,7 @@ function updateTopStripActiveState(tabId) {
       document.querySelectorAll('.strip-btn').forEach(btn => {
         if (btn.id === 'strip-login-portal') {
           btn.style.display = 'inline-flex';
-          btn.className = 'strip-btn px-4 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-bold shadow-lg shadow-indigo-500/30 flex items-center gap-1.5 shrink-0 transition text-xs';
+          btn.className = 'strip-btn px-4 py-1.5 rounded-lg bg-accent-500 text-white font-bold shadow-md flex items-center gap-1.5 shrink-0 transition text-xs';
         } else {
           btn.style.display = 'none'; // Lock all other module buttons!
         }
@@ -280,7 +623,9 @@ function updateTopStripActiveState(tabId) {
     
     // Update role badge in top strip
     if (stripRoleName) {
-      stripRoleName.textContent = `${roleKey.replace('ROLE_', '').replace('_', ' ')} PORTAL`;
+      const theme = getRoleTheme(roleKey);
+      stripRoleName.textContent = `${theme.shortName.toUpperCase()} PORTAL`;
+      stripRoleName.className = `${theme.accentText} tracking-wider shrink-0 mr-1 flex items-center gap-1`;
     }
 
     document.querySelectorAll('.strip-btn').forEach(btn => {
@@ -288,7 +633,7 @@ function updateTopStripActiveState(tabId) {
       if (allowed.includes(btnTab)) {
         btn.style.display = 'inline-flex';
         if (btnTab === tabId) {
-          btn.className = 'strip-btn px-3.5 py-1 rounded-lg bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 shrink-0 transition text-xs font-bold';
+          btn.className = 'strip-btn px-3.5 py-1 rounded-lg bg-accent-500 text-white shadow-md flex items-center gap-1.5 shrink-0 transition text-xs font-bold';
         } else {
           btn.className = 'strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition text-xs font-semibold';
         }
@@ -308,12 +653,12 @@ function renderNavigation() {
       <div class="px-2 py-1 mb-2 text-[10px] font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
         <i data-lucide="lock" class="w-3 h-3 text-rose-400"></i> ACCESS RESTRICTED
       </div>
-      <button onclick="navigateToTab('login-portal')" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg shadow-indigo-600/30">
+      <button onclick="navigateToTab('login-portal')" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all bg-accent-500 text-white shadow-md">
         <div class="flex items-center gap-3">
           <i data-lucide="shield-check" class="w-4 h-4"></i>
-          <span>🔐 Login & Roles Portal</span>
+          <span>Login & Roles Portal</span>
         </div>
-        <span class="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-white text-indigo-900">Sign In</span>
+        <span class="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-white text-brand-800">Sign In</span>
       </button>
 
       <div class="p-3.5 mt-4 rounded-xl bg-dark-900/90 border border-slate-800 text-slate-400 text-center">
@@ -339,7 +684,7 @@ function renderNavigation() {
     </div>
 
     ${items.map(item => `
-      <button onclick="navigateToTab('${item.id}')" class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${STATE.activeTab === item.id ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 font-bold' : 'text-slate-400 hover:bg-dark-700 hover:text-slate-100'}">
+      <button onclick="navigateToTab('${item.id}')" class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${STATE.activeTab === item.id ? 'bg-accent-500 text-white shadow-md font-bold' : 'text-slate-500 hover:bg-brand-50 hover:text-brand-700'}">
         <div class="flex items-center gap-3">
           <i data-lucide="${item.icon}" class="w-4 h-4"></i>
           <span class="truncate">${item.label}</span>
@@ -379,6 +724,13 @@ function loadActiveTab() {
   } catch (err) {
     console.error('Error rendering active tab:', err);
   }
+  const main = document.getElementById('mainContent');
+  if (main) {
+    main.classList.remove('page-enter');
+    void main.offsetWidth;
+    main.classList.add('page-enter');
+  }
+  updateFabVisibility();
   safeCreateIcons();
 }
 
@@ -421,7 +773,10 @@ function renderFlowStepper() {
       </div>
 
       <!-- Stepper Dots -->
-      <div class="grid grid-cols-4 md:grid-cols-8 gap-2 pt-4">
+      <div class="flow-progress-track mb-3">
+        <div class="flow-progress-fill" style="width: ${progressPercent}%"></div>
+      </div>
+      <div class="grid grid-cols-4 md:grid-cols-8 gap-2 pt-2">
         ${FLOW_STATE.steps.map(s => {
           const isDone = s.step < current;
           const isActive = s.step === current;
@@ -571,9 +926,16 @@ function updateUserProfileHeader() {
   const logoutBtn = document.getElementById('headerLogoutBtn');
 
   if (STATE.isAuthenticated && STATE.currentUser) {
+    const theme = getRoleTheme(STATE.currentRole || 'ROLE_EMPLOYEE');
     if (nameEl) nameEl.textContent = STATE.currentUser.name;
-    if (roleEl) roleEl.textContent = STATE.currentUser.designation;
-    if (avatarEl) avatarEl.textContent = STATE.currentUser.avatar;
+    if (roleEl) {
+      roleEl.textContent = STATE.currentUser.designation;
+      roleEl.className = `text-[10px] ${theme.accentText} font-semibold`;
+    }
+    if (avatarEl) {
+      avatarEl.textContent = STATE.currentUser.avatar;
+      avatarEl.className = `h-8 w-8 rounded-full bg-gradient-to-br ${theme.gradient} flex items-center justify-center text-white font-bold text-xs shadow-md`;
+    }
     if (roleSel) roleSel.value = STATE.currentRole || 'ROLE_EMPLOYEE';
     if (logoutBtn) logoutBtn.style.display = 'inline-flex';
   } else {
@@ -654,36 +1016,230 @@ function updateWalletDisplay() {
 // =========================================================================
 // 0. DEDICATED LOGIN & IDENTITY GATEWAY MODULE
 // =========================================================================
+function renderMarketingHomepage() {
+  if (STATE.isAuthenticated) return '';
+  return `
+    <section class="home-3d-scene carousel-header rounded mb-4 overflow-hidden popout-3d-tilt" data-tilt-depth="8">
+      <div class="position-relative home-3d-hero-wrap" style="min-height:480px;">
+        <img src="/travisa/img/carousel-1.jpg" class="position-absolute w-100 h-100 object-fit-cover" alt="">
+        <div class="home-3d-overlay position-absolute w-100 h-100"></div>
+
+        <div class="home-3d-float home-3d-float-left popout-3d popout-3d-float" data-tilt-depth="14">
+          <img src="${WORKFLOW_IMAGES.flightCard}" alt="Flight booking preview">
+          <span><i data-lucide="plane" class="w-3.5 h-3.5"></i> Corporate fares</span>
+        </div>
+        <div class="home-3d-float home-3d-float-right popout-3d popout-3d-float" data-tilt-depth="16">
+          <img src="${WORKFLOW_IMAGES.dashboardTrip}" alt="Trip dashboard preview">
+          <span><i data-lucide="map" class="w-3.5 h-3.5"></i> Live itinerary</span>
+        </div>
+
+        <div class="carousel-caption d-flex align-items-center justify-content-center h-100 w-100 position-relative">
+          <div class="home-3d-hero-card popout-3d popout-3d-hero popout-3d-tilt text-center p-4 p-md-5" data-tilt-depth="10">
+            <h5 class="sub-title text-secondary text-uppercase fw-bold mb-3">Corporate travel management</h5>
+            <h1 class="display-4 text-capitalize text-white mb-3 fw-bold">Travel smarter. Spend less. Stay compliant.</h1>
+            <p class="text-white mb-4 fs-6">Everything your team needs to book corporate travel, get approvals, manage itineraries, and reconcile expenses — in one platform.</p>
+            <button onclick="document.getElementById('portalLoginUsername')?.focus(); window.scrollTo({top: 700, behavior: 'smooth'})" class="btn btn-primary border-secondary rounded-pill text-white py-3 px-5 me-2 mb-2">Sign in to your account</button>
+            <button onclick="loginAsRole('ROLE_EMPLOYEE'); navigateToTab('dashboard');" class="btn btn-secondary rounded-pill py-3 px-5 mb-2">View employee demo</button>
+            <div class="site-trust-row mt-4 justify-content-center text-white">
+              <span><i data-lucide="shield-check" class="w-4 h-4 inline"></i> SOC 2 Type II</span>
+              <span><i data-lucide="globe" class="w-4 h-4 inline"></i> 120+ countries</span>
+              <span><i data-lucide="users" class="w-4 h-4 inline"></i> 2.4M travelers</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="container-fluid counter-facts py-5 mb-4 rounded home-3d-stats">
+      <div class="container py-2">
+        <div class="row g-4">
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="counter popout-3d popout-3d-delay-1 popout-3d-tilt" data-tilt-depth="12">
+              <div class="counter-icon"><i class="fas fa-percent"></i></div>
+              <div class="counter-content">
+                <h3>Savings</h3>
+                <div class="counter-value">18%</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="counter popout-3d popout-3d-delay-2 popout-3d-tilt" data-tilt-depth="12">
+              <div class="counter-icon"><i class="fas fa-clock"></i></div>
+              <div class="counter-content">
+                <h3>Time Saved</h3>
+                <div class="counter-value">4.2 hrs</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="counter popout-3d popout-3d-delay-3 popout-3d-tilt" data-tilt-depth="12">
+              <div class="counter-icon"><i class="fas fa-server"></i></div>
+              <div class="counter-content">
+                <h3>Uptime SLA</h3>
+                <div class="counter-value">99.9%</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="counter popout-3d popout-3d-delay-4 popout-3d-tilt" data-tilt-depth="12">
+              <div class="counter-icon"><i class="fas fa-headset"></i></div>
+              <div class="counter-content">
+                <h3>Support</h3>
+                <div class="counter-value">24/7</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="home-3d-showcase container-fluid py-5 mb-4">
+      <div class="container">
+        <div class="section-title text-center mb-5">
+          <div class="sub-style"><h5 class="sub-title text-primary px-3">Interactive 3D previews</h5></div>
+          <h2 class="display-6 mb-2">Explore the platform in depth</h2>
+          <p class="text-muted mb-0">Hover cards to pop them forward — the same modules you use after sign-in.</p>
+        </div>
+        <div class="home-3d-showcase-grid">
+          <article class="home-3d-preview popout-3d popout-3d-tilt popout-3d-delay-1" data-tilt-depth="18" onclick="loginAsRole('ROLE_EMPLOYEE'); navigateToTab('search');">
+            <div class="home-3d-preview-img" style="background-image:url('${WORKFLOW_IMAGES.flightCard}')"></div>
+            <div class="home-3d-preview-body">
+              <span class="home-3d-preview-badge"><i data-lucide="search" class="w-3.5 h-3.5"></i> Book Travel</span>
+              <h3>Search corporate rates</h3>
+              <p>Flights, hotels, and ground transport with instant policy checks.</p>
+            </div>
+          </article>
+          <article class="home-3d-preview popout-3d popout-3d-tilt popout-3d-delay-2 home-3d-preview-featured" data-tilt-depth="22" onclick="loginAsRole('ROLE_EMPLOYEE'); navigateToTab('dashboard');">
+            <div class="home-3d-preview-img" style="background-image:url('${WORKFLOW_IMAGES.employeeBanner}')"></div>
+            <div class="home-3d-preview-body">
+              <span class="home-3d-preview-badge"><i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Dashboard</span>
+              <h3>Traveler command center</h3>
+              <p>Trips, wallet balance, approvals, and AI assistant in one view.</p>
+            </div>
+          </article>
+          <article class="home-3d-preview popout-3d popout-3d-tilt popout-3d-delay-3" data-tilt-depth="18" onclick="loginAsRole('ROLE_SUPER_ADMIN'); navigateToTab('analytics');">
+            <div class="home-3d-preview-img" style="background-image:url('${WORKFLOW_IMAGES.city}')"></div>
+            <div class="home-3d-preview-body">
+              <span class="home-3d-preview-badge"><i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i> Analytics</span>
+              <h3>Executive insights</h3>
+              <p>Spend trends, compliance scores, and carbon ROI dashboards.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <div class="container-fluid features overflow-hidden py-4 mb-4">
+      <div class="container">
+        <div class="section-title text-center mb-5">
+          <div class="sub-style"><h5 class="sub-title text-primary px-3">Platform capabilities</h5></div>
+          <h1 class="display-6 mb-3">Everything your travel program needs</h1>
+        </div>
+        <div class="row g-4 justify-content-center text-center">
+          <div class="col-md-6 col-lg-3">
+            <div class="feature-item text-center p-4 popout-3d popout-3d-tilt h-100" data-tilt-depth="10">
+              <div class="feature-icon p-3 mb-3 mx-auto"><i data-lucide="plane" class="w-8 h-8 text-primary"></i></div>
+              <h5 class="mb-2">Book & manage trips</h5>
+              <p class="mb-0 small">Search negotiated corporate rates for flights, hotels, and ground transport.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="feature-item text-center p-4 popout-3d popout-3d-tilt h-100" data-tilt-depth="10">
+              <div class="feature-icon p-3 mb-3 mx-auto"><i data-lucide="check-square" class="w-8 h-8 text-primary"></i></div>
+              <h5 class="mb-2">Policy & approvals</h5>
+              <p class="mb-0 small">Multi-tier approval workflows with automatic policy checks.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="feature-item text-center p-4 popout-3d popout-3d-tilt h-100" data-tilt-depth="10">
+              <div class="feature-icon p-3 mb-3 mx-auto"><i data-lucide="receipt" class="w-8 h-8 text-primary"></i></div>
+              <h5 class="mb-2">Expenses & OCR</h5>
+              <p class="mb-0 small">Scan receipts and get reimbursed with AI fraud detection.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="feature-item text-center p-4 popout-3d popout-3d-tilt h-100" data-tilt-depth="10">
+              <div class="feature-icon p-3 mb-3 mx-auto"><i data-lucide="shield-alert" class="w-8 h-8 text-primary"></i></div>
+              <h5 class="mb-2">Duty of care</h5>
+              <p class="mb-0 small">Live risk alerts, traveler tracking, and emergency SOS.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-fluid testimonial overflow-hidden pb-4 mb-4">
+      <div class="container py-2">
+        <div class="testimonial-item popout-3d popout-3d-tilt home-3d-testimonial" data-tilt-depth="14">
+          <div class="testimonial-content p-4 mb-4">
+            <p class="fs-5 mb-0">"CorporateTravel360 cut our travel spend by 22% in the first quarter while giving finance full visibility into every trip."</p>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <img src="/travisa/img/testimonial-1.jpg" class="rounded-circle home-3d-avatar-pop" style="width:80px;height:80px;object-fit:cover;" alt="">
+            <div>
+              <h5 class="mb-0">Sarah Connor</h5>
+              <p class="mb-0 text-muted small">VP Operations, Acme Global Technologies</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function initHomepage3D() {
+  const tiltEls = document.querySelectorAll('.popout-3d-tilt');
+  tiltEls.forEach(el => {
+    if (el.dataset.tiltBound) return;
+    el.dataset.tiltBound = 'true';
+    const depth = Number(el.dataset.tiltDepth || 10);
+    el.addEventListener('mousemove', (e) => {
+      const rect = el.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      el.style.transform = `perspective(900px) rotateX(${(-y * depth * 0.35).toFixed(2)}deg) rotateY(${(x * depth * 0.45).toFixed(2)}deg) translateZ(${depth}px)`;
+    });
+    el.addEventListener('mouseleave', () => {
+      el.style.transform = '';
+    });
+  });
+}
+
 function loadLoginPortalTab() {
   const main = document.getElementById('mainContent');
+  const activeTheme = getRoleTheme(STATE.currentRole || 'ROLE_EMPLOYEE');
   
   main.innerHTML = `
+    ${renderMarketingHomepage()}
+    ${STATE.isAuthenticated ? renderPortalHero(STATE.currentRole || 'ROLE_EMPLOYEE') : ''}
+
     <!-- Dedicated Login & Role Gateway Header -->
-    <div class="glass-panel p-6 rounded-3xl border border-indigo-500/40 glow-indigo relative overflow-hidden mb-6">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="glass-panel p-6 rounded-3xl border ${activeTheme.border} relative overflow-hidden mb-6 portal-card-animate">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl ${activeTheme.cardGradient} rounded-full blur-3xl opacity-60 pointer-events-none"></div>
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
         <div class="flex items-center gap-4">
-          <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center text-white font-extrabold text-2xl shadow-xl shadow-indigo-500/30 shrink-0">
+          <div class="h-14 w-14 rounded-2xl bg-gradient-to-br ${activeTheme.gradient} flex items-center justify-center text-white font-extrabold text-2xl shadow-xl shrink-0">
             <i data-lucide="shield-check" class="w-8 h-8"></i>
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h1 class="text-2xl font-extrabold text-white tracking-tight">Enterprise Login & Identity Gateway</h1>
-              <span class="text-xs px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1">
-                <span class="h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span> AUTH READY
-              </span>
+              <h1 class="text-2xl font-extrabold text-white tracking-tight">${STATE.isAuthenticated ? 'Account & Portal Access' : 'Sign in to your workspace'}</h1>
+              ${STATE.isAuthenticated ? `<span class="text-xs px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1">
+                <span class="h-2 w-2 rounded-full bg-emerald-400"></span> Signed in
+              </span>` : ''}
             </div>
-            <p class="text-xs text-slate-400 mt-1">Switch personas across 9 corporate roles, verify JWT security tokens, and launch any platform module directly.</p>
+            <p class="text-xs text-slate-400 mt-1">${STATE.isAuthenticated ? 'Switch roles or open modules available to your profile.' : 'Use your corporate email or select a demo role to explore the platform.'}</p>
           </div>
         </div>
 
         <div class="flex items-center gap-3">
           <div class="p-3 rounded-2xl bg-dark-900 border border-slate-800 text-right">
-            <span class="text-[10px] text-slate-400 block font-semibold">Current Active Persona</span>
+            <span class="text-[10px] text-slate-400 block font-semibold">Signed in as</span>
             <div class="text-xs font-bold text-white flex items-center gap-1.5 justify-end">
               <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
               <span>${STATE.currentUser.name}</span>
             </div>
-            <span class="text-[10px] text-indigo-300 font-mono">${STATE.currentRole}</span>
+            <span class="text-[10px] ${activeTheme.accentText} font-mono">${STATE.currentRole || 'Not signed in'}</span>
           </div>
         </div>
       </div>
@@ -703,42 +1259,45 @@ function loadLoginPortalTab() {
           <strong class="text-emerald-400">${formatMoney(STATE.currentUser.wallet ? STATE.currentUser.wallet.remaining : 324200)}</strong>
         </div>
         <div class="p-2.5 rounded-xl bg-dark-900/80 border border-slate-800/80">
-          <span class="text-[10px] text-slate-500 block">JWT Token Status</span>
-          <strong class="text-indigo-300 font-mono">HMAC-SHA256 (Active)</strong>
+          <span class="text-[10px] text-slate-500 block">Session</span>
+          <strong class="text-indigo-300 font-mono">${STATE.isAuthenticated ? 'Active' : 'Guest'}</strong>
         </div>
       </div>
     </div>
 
-    <!-- Section 1: 1-Click Role Persona Grid -->
+    <!-- Workspace selection -->
     <div class="space-y-4 mb-8">
       <div class="flex items-center justify-between">
         <div>
           <h3 class="text-base font-extrabold text-white flex items-center gap-2">
-            <i data-lucide="users" class="w-5 h-5 text-indigo-400"></i> Select Role for Instant 1-Click Login
+            <i data-lucide="users" class="w-5 h-5 text-indigo-400"></i> Choose your workspace
           </h3>
-          <p class="text-xs text-slate-400">Click any card below to instantly adopt the persona, issue a live JWT session, and adapt user permissions.</p>
+          <p class="text-xs text-slate-400">Select a demo profile to explore how CorporateTravel360 works for each team — employee, manager, finance, and more.</p>
         </div>
-        <span class="text-xs text-slate-500 font-semibold font-mono">9 Available Roles</span>
+        <span class="text-xs text-slate-500 font-semibold">9 team profiles</span>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        ${Object.keys(DEMO_USERS).map(k => {
+        ${Object.keys(DEMO_USERS).map((k, idx) => {
           const u = DEMO_USERS[k];
+          const theme = getRoleTheme(k);
           const isCur = STATE.currentRole === k;
           const roleNavItems = (ROLE_NAVS[k] || []).filter(item => item.id !== 'login-portal');
           return `
-            <div class="p-5 rounded-2xl border transition-all relative ${isCur ? 'bg-gradient-to-b from-indigo-900/40 to-dark-800 border-indigo-500 ring-2 ring-indigo-500/50 shadow-xl' : 'bg-dark-800/90 hover:bg-dark-700/80 border-slate-800 hover:border-slate-600'}">
-              <div class="flex items-start justify-between gap-3">
+            <div class="portal-role-card portal-card-animate p-5 rounded-2xl border transition-all relative overflow-hidden ${isCur ? `active bg-gradient-to-b ${theme.cardGradient} ${theme.border} ring-2 ring-white/10 shadow-xl ${theme.glow}` : 'bg-dark-800/90 hover:bg-dark-700/80 border-slate-800 hover:border-slate-600'}" style="animation-delay: ${idx * 40}ms">
+              <div class="role-card-photo" style="background-image: url('${heroImageUrl(k)}')"></div>
+              <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${theme.gradient} rounded-t-2xl z-10"></div>
+              <div class="flex items-start justify-between gap-3 relative z-10">
                 <div class="flex items-center gap-3">
-                  <div class="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md shrink-0">
-                    ${u.avatar}
+                  <div class="h-12 w-12 rounded-2xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center text-white font-extrabold text-sm shadow-md shrink-0">
+                    <i data-lucide="${theme.icon}" class="w-5 h-5"></i>
                   </div>
                   <div>
                     <h4 class="text-sm font-extrabold text-white flex items-center gap-2">
                       ${u.name}
                       ${isCur ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[9px] font-bold border border-emerald-500/30">ACTIVE</span>` : ''}
                     </h4>
-                    <p class="text-[11px] text-indigo-300 font-semibold">${u.designation}</p>
+                    <p class="text-[11px] ${theme.accentText} font-semibold">${theme.portalName}</p>
                     <p class="text-[10px] text-slate-400 font-mono mt-0.5">${u.email}</p>
                   </div>
                 </div>
@@ -766,9 +1325,9 @@ function loadLoginPortalTab() {
               </div>
 
               <div class="mt-4 pt-3 border-t border-slate-800 flex items-center gap-2">
-                <button onclick="loginAsRole('${k}'); loadLoginPortalTab();" class="flex-1 py-2 rounded-xl font-bold text-xs transition shadow-md ${isCur ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30'} flex items-center justify-center gap-1.5">
+                <button onclick="loginAsRole('${k}'); loadLoginPortalTab();" class="flex-1 py-2 rounded-xl font-bold text-xs transition shadow-md ${isCur ? 'bg-emerald-600 text-white' : `bg-gradient-to-r ${theme.gradient} hover:brightness-110 text-white`} flex items-center justify-center gap-1.5">
                   <i data-lucide="${isCur ? 'check-circle' : 'log-in'}" class="w-3.5 h-3.5"></i>
-                  <span>${isCur ? 'Active Session' : 'Login As ' + u.name.split(' ')[0]}</span>
+                  <span>${isCur ? 'Active Session' : 'Enter ' + theme.shortName + ' Portal'}</span>
                 </button>
                 <button onclick="loginAsRole('${k}'); navigateToTab('dashboard');" class="px-3 py-2 rounded-xl bg-dark-900 hover:bg-dark-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition" title="Login and open Dashboard">
                   Dashboard ➔
@@ -782,53 +1341,55 @@ function loadLoginPortalTab() {
 
     <!-- Section 2: Standard Credential Authentication Form -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-      <div class="lg:col-span-2 glass-panel p-6 rounded-2xl border border-slate-800">
-        <div class="flex items-center gap-2 text-indigo-400 mb-1 font-bold text-xs">
-          <i data-lucide="key" class="w-4 h-4"></i> CUSTOM CREDENTIAL AUTHENTICATION
+      <div class="lg:col-span-2 glass-panel login-photo-panel rounded-2xl border border-slate-800 relative overflow-hidden">
+        <div class="login-photo-bg" style="background-image: url('${WORKFLOW_IMAGES.login}')"></div>
+        <div class="relative z-10 p-6">
+        <div class="flex items-center gap-2 text-brand-300 mb-1 font-bold text-xs">
+          <i data-lucide="key" class="w-4 h-4"></i> Sign in
         </div>
-        <h3 class="text-base font-extrabold text-white mb-2">Sign In with Corporate Email & Password</h3>
-        <p class="text-xs text-slate-400 mb-4">Authenticates directly against backend Spring Boot <code>POST /api/auth/login</code> REST API with JWT generation.</p>
+          <h3 class="text-base font-extrabold text-white mb-2">Sign in with your work email</h3>
+          <p class="text-xs text-slate-400 mb-4">Access your company's travel portal with SSO or email credentials.</p>
 
         <form onsubmit="handlePortalCredentialLogin(event)" class="space-y-4 text-xs">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="text-slate-300 font-semibold block mb-1.5">Username or Corporate Email *</label>
-              <input type="text" id="portalLoginUsername" required value="traveler@acmetech.com" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500 font-medium">
+              <label class="text-slate-300 font-semibold block mb-1.5">Work email</label>
+              <input type="text" id="portalLoginUsername" required value="traveler@acmetech.com" placeholder="you@company.com" class="site-input w-full">
             </div>
             <div>
-              <label class="text-slate-300 font-semibold block mb-1.5">Password *</label>
-              <input type="password" id="portalLoginPassword" required value="password123" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500 font-medium">
+              <label class="text-slate-300 font-semibold block mb-1.5">Password</label>
+              <input type="password" id="portalLoginPassword" required value="password123" placeholder="••••••••" class="site-input w-full">
             </div>
           </div>
 
           <div class="flex items-center justify-between pt-2">
-            <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
-              <i data-lucide="lock" class="w-3.5 h-3.5 text-emerald-400"></i>
-              <span>BCrypt Salted Hashes & Stateless JWT</span>
-            </div>
-            <button type="submit" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center gap-2">
-              <i data-lucide="log-in" class="w-4 h-4"></i> Authenticate & Generate Token
+            <label class="text-[11px] text-slate-400 flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked class="accent-brand-500"> Remember me
+            </label>
+            <button type="submit" class="site-btn-primary px-6 py-2.5 text-xs">
+              Sign in
             </button>
           </div>
         </form>
+        </div>
       </div>
 
       <!-- Quick Session Stats -->
       <div class="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
         <div>
-          <div class="flex items-center gap-2 text-indigo-400 mb-1 font-bold text-xs">
-            <i data-lucide="shield" class="w-4 h-4"></i> SECURITY STATUS
+          <div class="flex items-center gap-2 text-brand-300 mb-1 font-bold text-xs">
+            <i data-lucide="shield" class="w-4 h-4"></i> Your profile
           </div>
-          <h4 class="text-sm font-extrabold text-white">Active Session Profile</h4>
+          <h4 class="text-sm font-extrabold text-white">Session overview</h4>
           
           <div class="space-y-3 mt-4 text-xs">
             <div class="flex justify-between py-1.5 border-b border-slate-800">
-              <span class="text-slate-400">Principal:</span>
+              <span class="text-slate-400">Name</span>
               <strong class="text-white">${STATE.currentUser.name}</strong>
             </div>
             <div class="flex justify-between py-1.5 border-b border-slate-800">
-              <span class="text-slate-400">Role Authority:</span>
-              <strong class="text-indigo-400">${STATE.currentRole}</strong>
+              <span class="text-slate-400">Role</span>
+              <strong class="text-indigo-400">${STATE.currentRole || 'Guest'}</strong>
             </div>
             <div class="flex justify-between py-1.5 border-b border-slate-800">
               <span class="text-slate-400">Cost Center:</span>
@@ -842,8 +1403,27 @@ function loadLoginPortalTab() {
         </div>
 
         <button onclick="navigateToTab('audit')" class="w-full mt-4 py-2 rounded-xl bg-dark-900 hover:bg-dark-700 border border-slate-700 text-indigo-300 hover:text-white font-bold text-xs transition flex items-center justify-center gap-1.5">
-          <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Inspect Security Audit Trail ➔
+          <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> View activity log
         </button>
+      </div>
+    </div>
+
+    <!-- Platform overview -->
+    <div class="site-platform-overview glass-panel p-6 mb-8 overflow-hidden">
+      <div class="flex flex-col xl:flex-row gap-6 items-start xl:items-center">
+        <div class="flex-1">
+          <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
+            <i data-lucide="route" class="w-5 h-5 text-brand-300"></i> End-to-end travel lifecycle
+          </h3>
+          <p class="text-xs text-slate-400 mt-2">From booking and approvals to expenses and duty-of-care — one connected platform for travelers, managers, and finance teams.</p>
+          <div class="site-platform-steps">
+            <div class="site-platform-step"><strong>Book</strong>Search corporate rates</div>
+            <div class="site-platform-step"><strong>Approve</strong>Policy-aware workflows</div>
+            <div class="site-platform-step"><strong>Travel</strong>Itinerary & boarding pass</div>
+            <div class="site-platform-step"><strong>Reconcile</strong>Expenses & reports</div>
+          </div>
+        </div>
+        <img src="${WORKFLOW_IMAGES.workflowReference}" alt="Corporate travel platform overview" class="workflow-reference-image rounded-2xl border border-slate-700 shadow-2xl max-w-md w-full">
       </div>
     </div>
 
@@ -859,18 +1439,18 @@ function loadLoginPortalTab() {
           <div class="flex items-center justify-between mb-4">
             <div>
               <h3 class="text-base font-extrabold text-white flex items-center gap-2">
-                <i data-lucide="shield-check" class="w-5 h-5 text-emerald-400"></i> Authorized Modules for ${roleDisplayName} Portal (${authorizedModules.length} Available)
+                <i data-lucide="shield-check" class="w-5 h-5 text-emerald-400"></i> Your modules (${authorizedModules.length})
               </h3>
-              <p class="text-xs text-slate-400">Showing only modules accessible to <strong>${STATE.currentUser.name}</strong> (${STATE.currentUser.designation}).</p>
+              <p class="text-xs text-slate-400">Tools available to <strong>${STATE.currentUser.name}</strong> in the ${roleDisplayName} workspace.</p>
             </div>
             <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              Role RBAC Enforced
+              Access verified
             </span>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 ${restrictedModules.length > 0 ? 'mb-6' : ''}">
             ${authorizedModules.map(m => `
-              <button onclick="navigateToTab('${m.id}')" class="p-4 rounded-2xl bg-dark-900 hover:bg-dark-700/80 border border-indigo-500/40 hover:border-indigo-400 text-left transition group shadow-sm">
+              <button onclick="navigateToTab('${m.id}')" class="portal-module-tile p-4 rounded-2xl bg-dark-900 hover:bg-dark-700/80 border ${activeTheme.border} hover:border-white/20 text-left transition group shadow-sm">
                 <div class="flex items-center justify-between mb-2">
                   <div class="h-9 w-9 rounded-xl bg-indigo-500/15 text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition">
                     <i data-lucide="${m.icon}" class="w-4 h-4"></i>
@@ -918,6 +1498,7 @@ function loadLoginPortalTab() {
   `;
 
   safeCreateIcons();
+  if (!STATE.isAuthenticated) initHomepage3D();
 }
 
 async function handlePortalCredentialLogin(e) {
@@ -950,10 +1531,175 @@ async function handlePortalCredentialLogin(e) {
 }
 
 // =========================================================================
+// ROLE-SPECIFIC WORKFLOW PANELS (HR / Finance / Support reference screens)
+// =========================================================================
+async function renderRoleWorkflowPanel(roleKey) {
+  if (roleKey === 'ROLE_HR') {
+    const res = await apiFetch('/api/analytics/hr-budget');
+    const data = (res && res.data) ? res.data : null;
+    if (!data) return '';
+    const categories = data.utilizationBreakdown || [];
+    const recent = data.recentRequests || [];
+    return `
+      <div class="workflow-panel p-6 rounded-3xl border border-pink-500/30 mb-2">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="font-extrabold text-lg text-white flex items-center gap-2">
+            <i data-lucide="heart-handshake" class="w-5 h-5 text-pink-400"></i> HR Budget Management
+          </h3>
+          <span class="text-xs px-3 py-1 rounded-full bg-pink-500/15 text-pink-300 font-bold border border-pink-500/30">Live API: /api/analytics/hr-budget</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="stat-card-3d p-4 rounded-2xl border border-slate-800">
+            <span class="text-xs text-slate-400">Total Budget</span>
+            <div class="text-2xl font-extrabold text-white mt-1">${formatMoney(data.totalBudget)}</div>
+          </div>
+          <div class="stat-card-3d p-4 rounded-2xl border border-slate-800">
+            <span class="text-xs text-slate-400">Utilized</span>
+            <div class="text-2xl font-extrabold text-amber-400 mt-1">${formatMoney(data.utilized)}</div>
+            <div class="text-[11px] text-slate-500 mt-1">${(data.utilizationPercentage || 0).toFixed(1)}% burn rate</div>
+          </div>
+          <div class="stat-card-3d p-4 rounded-2xl border border-slate-800">
+            <span class="text-xs text-slate-400">Remaining</span>
+            <div class="text-2xl font-extrabold text-emerald-400 mt-1">${formatMoney(data.remaining)}</div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="p-4 rounded-2xl bg-dark-900/70 border border-slate-800">
+            <h4 class="text-sm font-bold text-white mb-3">Budget Utilization by Category</h4>
+            <div class="space-y-2 text-xs">
+              ${categories.map(c => `
+                <div class="flex items-center justify-between py-2 border-b border-slate-800/80">
+                  <span class="text-slate-300">${c.category}</span>
+                  <span class="font-bold text-indigo-300">${formatMoney(c.amount)} <span class="text-slate-500">(${c.percentage}%)</span></span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <div class="p-4 rounded-2xl bg-dark-900/70 border border-slate-800">
+            <h4 class="text-sm font-bold text-white mb-3">Recent Travel Requests</h4>
+            <div class="space-y-2 text-xs">
+              ${recent.slice(0, 5).map(r => `
+                <div class="flex items-center justify-between py-2 border-b border-slate-800/80">
+                  <div>
+                    <div class="font-bold text-white">${r.employeeName}</div>
+                    <div class="text-slate-400">${r.route}</div>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-full ${r.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'} font-bold">${r.status}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (roleKey === 'ROLE_FINANCE') {
+    const res = await apiFetch('/api/finance/pending-releases');
+    const releases = (res && res.data) ? res.data : [];
+    return `
+      <div class="workflow-panel p-6 rounded-3xl border border-emerald-500/30 mb-2">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="font-extrabold text-lg text-white flex items-center gap-2">
+            <i data-lucide="wallet" class="w-5 h-5 text-emerald-400"></i> Pending Fund Releases
+          </h3>
+          <span class="text-xs px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/30">${releases.length} Pending</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400">
+                <th class="py-2 px-3">Employee</th>
+                <th class="py-2 px-3">Report</th>
+                <th class="py-2 px-3">Amount</th>
+                <th class="py-2 px-3">Status</th>
+                <th class="py-2 px-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60">
+              ${releases.length ? releases.slice(0, 6).map(r => `
+                <tr>
+                  <td class="py-3 px-3 text-white font-bold">${r.employeeName}</td>
+                  <td class="py-3 px-3 text-slate-300">${r.reportNumber}</td>
+                  <td class="py-3 px-3 font-bold text-emerald-400">${formatMoney(r.amount)}</td>
+                  <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold">${r.status}</span></td>
+                  <td class="py-3 px-3 text-right">
+                    <button onclick="releaseFund(${r.id})" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition">Release</button>
+                  </td>
+                </tr>
+              `).join('') : `<tr><td colspan="5" class="py-6 text-center text-slate-400">No pending fund releases</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  if (roleKey === 'ROLE_SUPPORT') {
+    const res = await apiFetch('/api/support/desk');
+    const desk = (res && res.data) ? res.data : null;
+    if (!desk) return '';
+    const itineraries = desk.upcomingItineraries || [];
+    return `
+      <div class="workflow-panel p-6 rounded-3xl border border-cyan-500/30 mb-2">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="font-extrabold text-lg text-white flex items-center gap-2">
+            <i data-lucide="headphones" class="w-5 h-5 text-cyan-400"></i> Travel Agent Support Desk
+          </h3>
+          <span class="text-xs px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-300 font-bold border border-cyan-500/30">Live API: /api/support/desk</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+            <div class="text-3xl font-extrabold text-cyan-400">${desk.activeBookings || 0}</div>
+            <div class="text-xs text-slate-400 mt-1">Active Bookings</div>
+          </div>
+          <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+            <div class="text-3xl font-extrabold text-amber-400">${desk.pendingServices || 0}</div>
+            <div class="text-xs text-slate-400 mt-1">Pending Services</div>
+          </div>
+          <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+            <div class="text-3xl font-extrabold text-rose-400">${desk.supportTickets || 0}</div>
+            <div class="text-xs text-slate-400 mt-1">Support Tickets</div>
+          </div>
+        </div>
+        <h4 class="text-sm font-bold text-white mb-3">Upcoming Travel Itineraries</h4>
+        <div class="space-y-2">
+          ${itineraries.slice(0, 5).map(it => `
+            <div class="flex items-center justify-between p-3 rounded-xl bg-dark-900/80 border border-slate-800 text-xs">
+              <div>
+                <div class="font-bold text-white">${it.travelerName}</div>
+                <div class="text-slate-400">${it.route} • ${it.departureDate}</div>
+                <div class="text-indigo-300 font-mono mt-0.5">PNR: ${it.pnrNumber || 'Pending'}</div>
+              </div>
+              <button onclick="navigateToTab('itinerary')" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition">Confirm</button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  return '';
+}
+
+async function releaseFund(reportId) {
+  const res = await apiFetch(`/api/finance/pending-releases/${reportId}/release`, { method: 'POST' });
+  if (res && res.success) {
+    showToast(`Fund released for expense report #${reportId}`);
+    loadDashboard();
+  } else {
+    showToast('Unable to release fund. Please try again.');
+  }
+}
+
+// =========================================================================
 // 1. DASHBOARD VIEW (LIVE TELEMETRY)
 // =========================================================================
 async function loadDashboard() {
   const main = document.getElementById('mainContent');
+  const roleKey = STATE.currentRole || 'ROLE_EMPLOYEE';
+  const theme = getRoleTheme(roleKey);
+  const allowedIds = (ROLE_NAVS[roleKey] || ROLE_NAVS.ROLE_EMPLOYEE).map(i => i.id);
   
   // Fetch fresh requests and bookings for live dashboard cards
   const [reqRes, bookRes, expRes] = await Promise.all([
@@ -966,75 +1712,67 @@ async function loadDashboard() {
   const bookings = (bookRes && bookRes.data) ? bookRes.data : STATE.bookings;
   const expenses = (expRes && expRes.data) ? expRes.data : STATE.expenses;
 
+  const rolePanelHtml = await renderRoleWorkflowPanel(roleKey);
+  const adminPanelHtml = await renderAdminCommandPanel(roleKey);
+  const employeeBannerHtml = roleKey === 'ROLE_EMPLOYEE' ? renderEmployeeTripBanner() : '';
+
   const activeTrip = bookings && bookings.length > 0 ? bookings[0] : null;
   const pendingApprovalsCount = requests.filter(r => r.status === 'SUBMITTED' || r.status === 'PENDING').length;
 
+  const quickModules = [
+    { id: 'search', icon: 'plane', color: 'text-indigo-400', title: 'Book Flights', sub: 'Corporate GDS' },
+    { id: 'requests', icon: 'file-text', color: 'text-purple-400', title: 'Travel Requests', sub: `${requests.length} Total` },
+    { id: 'approvals', icon: 'check-square', color: 'text-amber-400', title: 'Approvals Hub', sub: `${pendingApprovalsCount} Action Required` },
+    { id: 'itinerary', icon: 'ticket', color: 'text-emerald-400', title: 'E-Tickets & PNR', sub: `${bookings.length} Bookings` },
+    { id: 'expenses', icon: 'receipt', color: 'text-pink-400', title: 'AI OCR Expense', sub: `${expenses.length} Reports` },
+    { id: 'analytics', icon: 'bar-chart-3', color: 'text-cyan-400', title: 'BI Analytics', sub: 'Spend & ESG' },
+    { id: 'ai-assistant', icon: 'sparkles', color: 'text-violet-400', title: 'AI Assistant', sub: 'Smart Planner' },
+    { id: 'risk', icon: 'shield-alert', color: 'text-orange-400', title: 'Duty of Care', sub: 'Live Safety' },
+    { id: 'settings', icon: 'settings', color: 'text-sky-400', title: 'Policy Settings', sub: 'Org Config' },
+    { id: 'audit', icon: 'shield-check', color: 'text-emerald-400', title: 'Audit Trail', sub: 'Security Logs' }
+  ].filter(m => allowedIds.includes(m.id));
+
   main.innerHTML = `
+    <div class="page-enter">
+    ${renderPortalHero(roleKey, true)}
+    ${employeeBannerHtml}
     ${renderFlowStepper()}
 
     <!-- Header Greeting -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 portal-card-animate">
       <div>
         <h1 class="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
           Welcome, ${STATE.currentUser.name} 
-          <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
+          <span class="text-xs px-2.5 py-1 rounded-full ${theme.accentBg} ${theme.accentText} font-semibold border ${theme.border}">
             ${STATE.currentUser.designation}
           </span>
         </h1>
-        <p class="text-xs text-slate-400 mt-1">Role: <strong class="text-emerald-400">${STATE.currentRole}</strong> • Acme Global Technologies Inc.</p>
+        <p class="text-xs text-slate-400 mt-1">Role: <strong class="${theme.accentText}">${STATE.currentRole}</strong> • Acme Global Technologies Inc.</p>
       </div>
       <div class="flex items-center gap-3">
-        <button onclick="goToFlowStep(1)" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/20 transition">
+        <button onclick="goToFlowStep(1)" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r ${theme.gradient} hover:brightness-110 text-white font-bold text-xs shadow-lg transition">
           <i data-lucide="play" class="w-4 h-4"></i> Start New Trip Flow
         </button>
-        <button onclick="navigateToTab('login-portal')" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-xs shadow-md transition">
-          <i data-lucide="shield-check" class="w-4 h-4"></i> Switch Identity
+        <button onclick="navigateToTab('login-portal')" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-900 hover:bg-dark-700 border border-slate-700 text-slate-200 font-bold text-xs transition">
+          <i data-lucide="shield-check" class="w-4 h-4"></i> Switch Portal
         </button>
       </div>
     </div>
 
-    <!-- Quick Module Launch Cards -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-      <button onclick="navigateToTab('search')" class="p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:border-indigo-500 text-left transition group">
-        <i data-lucide="plane" class="w-5 h-5 text-indigo-400 mb-1.5 group-hover:scale-110 transition"></i>
-        <div class="text-xs font-bold text-white">Book Flights</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">Corporate GDS</div>
+    <!-- Quick Module Launch Cards (role-filtered) -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-${Math.min(quickModules.length, 6)} gap-3">
+      ${quickModules.map(m => `
+      <button onclick="navigateToTab('${m.id}')" class="portal-module-tile p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:${theme.border} text-left transition group">
+        <i data-lucide="${m.icon}" class="w-5 h-5 ${m.color} mb-1.5 group-hover:scale-110 transition"></i>
+        <div class="text-xs font-bold text-white">${m.title}</div>
+        <div class="text-[10px] text-slate-400 mt-0.5">${m.sub}</div>
       </button>
-
-      <button onclick="navigateToTab('requests')" class="p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:border-indigo-500 text-left transition group">
-        <i data-lucide="file-text" class="w-5 h-5 text-purple-400 mb-1.5 group-hover:scale-110 transition"></i>
-        <div class="text-xs font-bold text-white">Travel Requests</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">${requests.length} Total</div>
-      </button>
-
-      <button onclick="navigateToTab('approvals')" class="p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:border-indigo-500 text-left transition group">
-        <i data-lucide="check-square" class="w-5 h-5 text-amber-400 mb-1.5 group-hover:scale-110 transition"></i>
-        <div class="text-xs font-bold text-white">Approvals Hub</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">${pendingApprovalsCount} Action Required</div>
-      </button>
-
-      <button onclick="navigateToTab('itinerary')" class="p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:border-indigo-500 text-left transition group">
-        <i data-lucide="ticket" class="w-5 h-5 text-emerald-400 mb-1.5 group-hover:scale-110 transition"></i>
-        <div class="text-xs font-bold text-white">E-Tickets & PNR</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">${bookings.length} Bookings</div>
-      </button>
-
-      <button onclick="navigateToTab('expenses')" class="p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:border-indigo-500 text-left transition group">
-        <i data-lucide="receipt" class="w-5 h-5 text-pink-400 mb-1.5 group-hover:scale-110 transition"></i>
-        <div class="text-xs font-bold text-white">AI OCR Expense</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">${expenses.length} Reports</div>
-      </button>
-
-      <button onclick="navigateToTab('analytics')" class="p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:border-indigo-500 text-left transition group">
-        <i data-lucide="bar-chart-3" class="w-5 h-5 text-cyan-400 mb-1.5 group-hover:scale-110 transition"></i>
-        <div class="text-xs font-bold text-white">BI Analytics</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">Spend & ESG</div>
-      </button>
+      `).join('')}
     </div>
 
     <!-- KPI Metric Cards Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+      <div class="glass-panel stat-card-3d p-5 rounded-2xl border border-slate-800">
         <div class="flex items-center justify-between">
           <span class="text-xs font-semibold text-slate-400">Available Travel Budget</span>
           <i data-lucide="wallet" class="w-4 h-4 text-emerald-400"></i>
@@ -1043,7 +1781,7 @@ async function loadDashboard() {
         <div class="text-[11px] text-emerald-400 mt-1">Allocated: ${formatMoney(STATE.currentUser.wallet ? STATE.currentUser.wallet.allocated : 350000)}</div>
       </div>
 
-      <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+      <div class="glass-panel stat-card-3d p-5 rounded-2xl border border-slate-800">
         <div class="flex items-center justify-between">
           <span class="text-xs font-semibold text-slate-400">Pending Approvals</span>
           <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
@@ -1052,7 +1790,7 @@ async function loadDashboard() {
         <div class="text-[11px] text-slate-400 mt-1">Awaiting Manager & Finance Review</div>
       </div>
 
-      <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+      <div class="glass-panel stat-card-3d p-5 rounded-2xl border border-slate-800">
         <div class="flex items-center justify-between">
           <span class="text-xs font-semibold text-slate-400">Active Bookings & PNR</span>
           <i data-lucide="plane-takeoff" class="w-4 h-4 text-indigo-400"></i>
@@ -1061,7 +1799,7 @@ async function loadDashboard() {
         <div class="text-[11px] text-indigo-300 mt-1">E-Tickets & Boarding Passes Ready</div>
       </div>
 
-      <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+      <div class="glass-panel stat-card-3d p-5 rounded-2xl border border-slate-800">
         <div class="flex items-center justify-between">
           <span class="text-xs font-semibold text-slate-400">Total YTD Travel Spend</span>
           <i data-lucide="pie-chart" class="w-4 h-4 text-purple-400"></i>
@@ -1071,10 +1809,15 @@ async function loadDashboard() {
       </div>
     </div>
 
+    ${rolePanelHtml}
+    ${adminPanelHtml}
+
     <!-- Active Trip Spotlight Banner & Quick Actions -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 glass-panel p-6 rounded-2xl border border-slate-800 relative overflow-hidden">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div class="lg:col-span-2 glass-panel rounded-2xl border border-slate-800 relative overflow-hidden">
+        <div class="dashboard-trip-photo" style="background-image: url('${WORKFLOW_IMAGES.dashboardTrip}')"></div>
+        <div class="relative z-10 p-6">
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
           <div class="flex items-center gap-2.5">
             <span class="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping"></span>
             <h3 class="font-extrabold text-base text-white">Active Confirmed Trip: ${activeTrip ? (activeTrip.tripName || 'Delhi Tech Summit') : 'Delhi Tech Summit'}</h3>
@@ -1114,6 +1857,7 @@ async function loadDashboard() {
               Trip Timeline
             </button>
           </div>
+        </div>
         </div>
       </div>
 
@@ -1173,9 +1917,98 @@ async function loadDashboard() {
         </table>
       </div>
     </div>
+    </div>
   `;
 
   safeCreateIcons();
+}
+
+function renderEmployeeTripBanner() {
+  return `
+    <div class="employee-trip-banner rounded-3xl border border-indigo-500/30 mb-6 overflow-hidden relative">
+      <div class="employee-trip-photo" style="background-image: url('${WORKFLOW_IMAGES.employeeBanner}')"></div>
+      <div class="relative z-10 p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <span class="text-[10px] uppercase tracking-[0.2em] font-bold text-indigo-200">Employee Traveler Portal</span>
+          <h2 class="text-2xl md:text-3xl font-extrabold text-white mt-1">Plan Your Next Trip</h2>
+          <p class="text-sm text-slate-300 mt-2 max-w-xl">Search corporate rates, submit travel requests, and track approvals in one seamless workflow.</p>
+        </div>
+        <div class="flex flex-wrap gap-2 shrink-0">
+          <button onclick="openNewRequestModal()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-500 text-white font-bold text-xs shadow-lg hover:brightness-110 transition flex items-center gap-2">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i> Create Travel Request
+          </button>
+          <button onclick="navigateToTab('search')" class="px-4 py-2.5 rounded-xl bg-dark-900/80 border border-slate-600 text-slate-200 font-bold text-xs hover:bg-dark-700 transition">
+            Book Flights
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function renderAdminCommandPanel(roleKey) {
+  if (roleKey !== 'ROLE_COMPANY_ADMIN' && roleKey !== 'ROLE_SUPER_ADMIN') return '';
+  const res = await apiFetch('/api/analytics/dashboard');
+  const data = (res && res.data) ? res.data : null;
+  if (!data) return '';
+  const destinations = (data.topDestinations || []).slice(0, 4);
+  const trends = data.monthlyTrends || [];
+  const maxSpend = Math.max(...trends.map(t => Number(t.totalSpend || 0)), 1);
+
+  return `
+    <div class="workflow-panel p-6 rounded-3xl border border-sky-500/30 mb-2">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="font-extrabold text-lg text-white flex items-center gap-2">
+          <i data-lucide="building-2" class="w-5 h-5 text-sky-400"></i> Admin Command Center
+        </h3>
+        <span class="text-xs px-3 py-1 rounded-full bg-sky-500/15 text-sky-300 font-bold border border-sky-500/30">Live: /api/analytics/dashboard</span>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+          <div class="text-2xl font-extrabold text-white">${data.totalTrips || 0}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Total Trips</div>
+        </div>
+        <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+          <div class="text-2xl font-extrabold text-amber-400">${data.pendingApprovalsCount || 0}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Pending Approvals</div>
+        </div>
+        <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+          <div class="text-2xl font-extrabold text-emerald-400">${formatMoney(data.totalSavings)}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Total Savings</div>
+        </div>
+        <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+          <div class="text-2xl font-extrabold text-indigo-400">${data.policyComplianceRate || 0}%</div>
+          <div class="text-[11px] text-slate-400 mt-1">Policy Compliance</div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="p-4 rounded-2xl bg-dark-900/70 border border-slate-800">
+          <h4 class="text-sm font-bold text-white mb-3">Travel Requests Overview</h4>
+          <div class="flex items-end gap-2 h-32">
+            ${trends.map(t => {
+              const h = Math.round((Number(t.totalSpend) / maxSpend) * 100);
+              return `<div class="flex-1 flex flex-col items-center gap-1">
+                <div class="admin-spark-bar w-full rounded-t-lg bg-gradient-to-t from-indigo-600 to-cyan-400" style="height: ${Math.max(h, 8)}%"></div>
+                <span class="text-[10px] text-slate-500">${t.month}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="p-4 rounded-2xl bg-dark-900/70 border border-slate-800">
+          <h4 class="text-sm font-bold text-white mb-3">Top Destinations</h4>
+          <div class="space-y-3 text-xs">
+            ${destinations.map(d => {
+              const pct = Math.min(100, Math.round((Number(d.tripCount) / Math.max(destinations[0].tripCount, 1)) * 100));
+              return `<div>
+                <div class="flex justify-between mb-1"><span class="text-white font-bold">${d.destination}</span><span class="text-indigo-300">${d.tripCount} trips</span></div>
+                <div class="dest-progress-track"><div class="dest-progress-fill" style="width:${pct}%"></div></div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 // =========================================================================
@@ -1192,6 +2025,9 @@ function loadSearchTab() {
         <h1 class="text-2xl font-extrabold text-white tracking-tight">Corporate Travel Search & Booking Desk</h1>
         <p class="text-xs text-slate-400 mt-1">Search flights, hotels, and ground transport with corporate negotiated discounts and instant PNR issuance.</p>
       </div>
+      <button onclick="runAiPolicyCheck()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600/20 border border-violet-500/40 text-violet-200 font-bold text-xs hover:bg-violet-600/30 transition">
+        <i data-lucide="sparkles" class="w-4 h-4"></i> AI Policy Check
+      </button>
     </div>
 
     <!-- Search Controls Card -->
@@ -1276,12 +2112,10 @@ async function executeFlightSearch() {
   }
 
   container.innerHTML = flights.map(f => `
-    <div class="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition">
+    <div class="glass-panel popout-3d p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition overflow-hidden">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-extrabold text-sm shrink-0">
-            ${f.airline ? f.airline.substring(0, 2).toUpperCase() : 'AI'}
-          </div>
+          <div class="search-result-photo shrink-0" style="background-image: url('${WORKFLOW_IMAGES.flightCard}')"></div>
           <div>
             <div class="flex items-center gap-2">
               <h4 class="font-extrabold text-base text-white">${f.airline} <span class="font-mono text-indigo-300 font-bold">${f.flightNumber}</span></h4>
@@ -1325,33 +2159,37 @@ async function executeHotelSearch() {
   const res = await apiFetch('/api/hotels/search?city=Delhi');
   const hotels = (res && res.data) ? res.data : [];
 
-  container.innerHTML = hotels.map(h => `
-    <div class="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition">
+  container.innerHTML = hotels.map(h => {
+    const hotelName = h.name || h.hotelName || 'Corporate Hotel Partner';
+    const nightly = h.pricePerNight || h.nightlyPrice || 6200;
+    const photo = h.imageUrl || WORKFLOW_IMAGES.hotelFallback;
+    const stars = h.starRating || h.ratingStars || 4.5;
+    return `
+    <div class="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition overflow-hidden">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-extrabold text-sm shrink-0">
-            <i data-lucide="hotel" class="w-6 h-6"></i>
-          </div>
+          <div class="search-result-photo shrink-0" style="background-image: url('${photo}')"></div>
           <div>
             <div class="flex items-center gap-2">
-              <h4 class="font-extrabold text-base text-white">${h.hotelName}</h4>
-              <span class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">PREFFERED CORPORATE PARTNER</span>
+              <h4 class="font-extrabold text-base text-white">${hotelName}</h4>
+              <span class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">PREFERRED CORPORATE PARTNER</span>
             </div>
-            <div class="text-xs text-slate-400 mt-1">${h.address || 'Diplomatic Enclave, Delhi'} • ${h.ratingStars || 5} Stars • Free Breakfast & Wi-Fi</div>
+            <div class="text-xs text-slate-400 mt-1">${h.address || 'Diplomatic Enclave, Delhi'} • ${stars} Stars • ${h.roomType || 'Executive Room'}</div>
           </div>
         </div>
         <div class="flex items-center gap-4">
           <div class="text-right">
             <div class="text-xs text-slate-400">Nightly Rate</div>
-            <div class="text-xl font-extrabold text-emerald-400">${formatMoney(h.nightlyPrice || 6200)}</div>
+            <div class="text-xl font-extrabold text-emerald-400">${formatMoney(nightly)}</div>
           </div>
-          <button onclick="bookHotelNow(${h.id}, '${h.hotelName}', ${h.nightlyPrice || 6200})" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition">
+          <button onclick="bookHotelNow(${h.id}, '${hotelName.replace(/'/g, "\\'")}', ${nightly})" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition">
             Book Room
           </button>
         </div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   safeCreateIcons();
 }
@@ -1558,92 +2396,83 @@ function filterRequestsTable() {
 }
 
 function openNewRequestModal(prefAirline, prefFlight, prefPrice) {
+  STATE.requestWizardStep = 1;
+  renderRequestWizardModal(prefAirline, prefFlight, prefPrice);
+}
+
+function renderRequestWizardModal(prefAirline, prefFlight, prefPrice) {
   const modalContainer = document.getElementById('modalContainer');
   const estBudget = prefPrice ? (prefPrice + 18000) : 28000;
+  const step = STATE.requestWizardStep;
+  const steps = ['Travel Details', 'Budget & Purpose', 'Approval Flow', 'Review'];
 
   modalContainer.innerHTML = `
     <div class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div class="bg-dark-800 border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl p-6 my-8">
+      <div class="bg-dark-800 border border-slate-700 rounded-2xl w-full max-w-3xl shadow-2xl p-6 my-8 request-wizard-modal">
         <div class="flex items-center justify-between pb-4 border-b border-slate-700">
           <div class="flex items-center gap-2">
             <i data-lucide="plane-takeoff" class="w-5 h-5 text-indigo-400"></i>
             <div>
-              <h3 class="font-bold text-lg text-white">Create Corporate Travel Request (Flow Step 2)</h3>
-              <p class="text-[10px] text-slate-400">Validated in real-time against corporate policy rules</p>
+              <h3 class="font-bold text-lg text-white">Corporate Travel Request</h3>
+              <p class="text-[10px] text-slate-400">4-step workflow aligned to reference design</p>
             </div>
           </div>
-          <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
 
-        <form id="travelRequestForm" onsubmit="handleCreateRequest(event)" class="space-y-4 mt-4 text-xs">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Trip Name *</label>
-              <input type="text" id="reqTripName" required value="Annual Tech Summit & Architecture Review" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Trip Type *</label>
-              <select id="reqTripType" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
-                <option value="CLIENT_VISIT">Client Visit</option>
-                <option value="BUSINESS_MEETING" selected>Business Meeting</option>
-                <option value="CONFERENCE">Conference & Summit</option>
-                <option value="TRAINING">Training & Workshop</option>
-              </select>
+        <div class="request-wizard-steps mt-4 mb-6">
+          ${steps.map((label, i) => {
+            const n = i + 1;
+            const active = n === step;
+            const done = n < step;
+            return `<div class="request-wizard-step ${active ? 'active' : ''} ${done ? 'done' : ''}">
+              <div class="request-wizard-dot">${done ? '✓' : n}</div>
+              <span>${label}</span>
+            </div>`;
+          }).join('')}
+        </div>
+
+        <form id="travelRequestForm" onsubmit="handleCreateRequest(event)" class="space-y-4 text-xs">
+          <div class="${step === 1 ? '' : 'hidden'}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label class="font-semibold text-slate-300 block mb-1">Trip Name *</label><input type="text" id="reqTripName" required value="Annual Tech Summit & Architecture Review" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
+              <div><label class="font-semibold text-slate-300 block mb-1">Trip Type *</label><select id="reqTripType" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"><option value="CLIENT_VISIT" selected>Client Visit</option><option value="BUSINESS_MEETING">Business Meeting</option><option value="CONFERENCE">Conference</option><option value="TRAINING">Training</option></select></div>
+              <div><label class="font-semibold text-slate-300 block mb-1">Origin *</label><input type="text" id="reqOrigin" required value="Hyderabad (HYD)" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
+              <div><label class="font-semibold text-slate-300 block mb-1">Destination *</label><input type="text" id="reqDest" required value="Delhi (DEL)" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
+              <div><label class="font-semibold text-slate-300 block mb-1">Departure *</label><input type="date" id="reqDepDate" required class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
+              <div><label class="font-semibold text-slate-300 block mb-1">Return</label><input type="date" id="reqRetDate" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Origin City *</label>
-              <input type="text" id="reqOrigin" required value="Hyderabad (HYD)" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
+          <div class="${step === 2 ? '' : 'hidden'}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label class="font-semibold text-slate-300 block mb-1">Estimated Budget (₹) *</label><input type="number" id="reqBudget" required value="${estBudget}" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
+              <div><label class="font-semibold text-slate-300 block mb-1">Client / Event</label><input type="text" id="reqClient" value="Global FinTech Solutions Ltd." class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
             </div>
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Destination City *</label>
-              <input type="text" id="reqDest" required value="Delhi (DEL)" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
+            <div class="mt-4"><label class="font-semibold text-slate-300 block mb-1">Reason for Travel *</label><textarea id="reqJustification" required rows="3" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">Onsite presentation of enterprise cloud architecture to client leadership.</textarea></div>
+          </div>
+
+          <div class="${step === 3 ? '' : 'hidden'}">
+            <div class="p-4 rounded-2xl bg-dark-900 border border-slate-800 space-y-3">
+              <div class="flex items-center gap-3"><div class="user-avatar-ring">RV</div><div><div class="font-bold text-white">Robert Vance</div><div class="text-slate-400">Line Manager — Budget &lt; ₹25k auto-route</div></div></div>
+              <div class="flex items-center gap-3"><div class="user-avatar-ring emerald">DM</div><div><div class="font-bold text-white">David Miller</div><div class="text-slate-400">Finance Review — if budget &gt; ₹25k</div></div></div>
+              <div class="flex items-center gap-3"><div class="user-avatar-ring cyan">ER</div><div><div class="font-bold text-white">Elena Rostova</div><div class="text-slate-400">Travel Ops — booking desk after approval</div></div></div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Departure Date *</label>
-              <input type="date" id="reqDepDate" required class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Return Date</label>
-              <input type="date" id="reqRetDate" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
+          <div class="${step === 4 ? '' : 'hidden'}">
+            <div class="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 text-indigo-100 space-y-2">
+              <div class="flex justify-between"><span>Trip</span><strong id="reviewTrip">Annual Tech Summit</strong></div>
+              <div class="flex justify-between"><span>Route</span><strong id="reviewRoute">HYD ➔ DEL</strong></div>
+              <div class="flex justify-between"><span>Budget</span><strong id="reviewBudget">${formatMoney(estBudget)}</strong></div>
+              <div class="flex justify-between"><span>Approval Chain</span><strong>Manager → Finance → Travel Ops</strong></div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Estimated Budget (₹ INR) *</label>
-              <input type="number" id="reqBudget" required value="${estBudget}" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Client or Event Name</label>
-              <input type="text" id="reqClient" value="Global FinTech Solutions Ltd." class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
-            </div>
-          </div>
-
-          <div>
-            <label class="font-semibold text-slate-300 block mb-1">Business Justification *</label>
-            <textarea id="reqJustification" required rows="2" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">Onsite presentation of enterprise cloud architecture to client leadership.</textarea>
-          </div>
-
-          <div class="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-start gap-2.5">
-            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400 mt-0.5 shrink-0"></i>
-            <div class="text-[11px] text-indigo-200">
-              <strong>Automated Policy Approval Flow:</strong> Request is routed to Line Manager <strong>Robert Vance</strong>.
-            </div>
-          </div>
-
-          <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-700">
-            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 text-slate-300 font-bold transition">Cancel</button>
-            <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition shadow-lg shadow-indigo-600/30 flex items-center gap-1.5">
-              <span>Submit to Backend DB</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
-            </button>
+          <div class="flex items-center justify-between gap-3 pt-3 border-t border-slate-700">
+            <button type="button" onclick="${step > 1 ? 'requestWizardPrev()' : 'closeModal()'}" class="px-4 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 text-slate-300 font-bold transition">${step > 1 ? '← Back' : 'Cancel'}</button>
+            ${step < 4 ? `<button type="button" onclick="requestWizardNext()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition">Continue →</button>` :
+              `<button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition flex items-center gap-1.5"><i data-lucide="send" class="w-4 h-4"></i> Submit Request</button>`}
           </div>
         </form>
       </div>
@@ -1651,14 +2480,38 @@ function openNewRequestModal(prefAirline, prefFlight, prefPrice) {
   `;
 
   safeCreateIcons();
-
   const today = new Date();
   const nextWeek = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000);
   const nextWeekReturn = new Date(today.getTime() + 8 * 24 * 60 * 60 * 1000);
   const dep = document.getElementById('reqDepDate');
   const ret = document.getElementById('reqRetDate');
-  if (dep) dep.value = nextWeek.toISOString().split('T')[0];
-  if (ret) ret.value = nextWeekReturn.toISOString().split('T')[0];
+  if (dep && !dep.value) dep.value = nextWeek.toISOString().split('T')[0];
+  if (ret && !ret.value) ret.value = nextWeekReturn.toISOString().split('T')[0];
+  if (step === 4) updateRequestReviewSummary();
+}
+
+function requestWizardNext() {
+  if (STATE.requestWizardStep < 4) {
+    STATE.requestWizardStep += 1;
+    renderRequestWizardModal();
+  }
+}
+
+function requestWizardPrev() {
+  if (STATE.requestWizardStep > 1) {
+    STATE.requestWizardStep -= 1;
+    renderRequestWizardModal();
+  }
+}
+
+function updateRequestReviewSummary() {
+  const trip = document.getElementById('reqTripName');
+  const origin = document.getElementById('reqOrigin');
+  const dest = document.getElementById('reqDest');
+  const budget = document.getElementById('reqBudget');
+  if (document.getElementById('reviewTrip') && trip) document.getElementById('reviewTrip').textContent = trip.value;
+  if (document.getElementById('reviewRoute') && origin && dest) document.getElementById('reviewRoute').textContent = `${origin.value} ➔ ${dest.value}`;
+  if (document.getElementById('reviewBudget') && budget) document.getElementById('reviewBudget').textContent = formatMoney(parseFloat(budget.value) || 0);
 }
 
 async function handleCreateRequest(e) {
@@ -1729,6 +2582,17 @@ async function loadApprovalsTab() {
     </div>
 
     <!-- Pending Approvals Cards Container -->
+    <div class="approval-tabs flex flex-wrap gap-2 mb-4">
+      <button type="button" onclick="switchApprovalTab('travel')" class="approval-tab ${STATE.approvalFilter === 'travel' ? 'active' : ''}" data-filter="travel">
+        Travel Requests <span class="approval-tab-count" id="approvalCountTravel">0</span>
+      </button>
+      <button type="button" onclick="switchApprovalTab('expense')" class="approval-tab ${STATE.approvalFilter === 'expense' ? 'active' : ''}" data-filter="expense">
+        Expense Reports <span class="approval-tab-count" id="approvalCountExpense">0</span>
+      </button>
+      <button type="button" onclick="switchApprovalTab('change')" class="approval-tab ${STATE.approvalFilter === 'change' ? 'active' : ''}" data-filter="change">
+        Change Requests <span class="approval-tab-count" id="approvalCountChange">1</span>
+      </button>
+    </div>
     <div id="approvalsCardsContainer" class="space-y-4">
       <div class="p-6 text-center text-slate-400 glass-panel rounded-2xl">Loading pending approvals from database...</div>
     </div>
@@ -1738,9 +2602,93 @@ async function loadApprovalsTab() {
   await refreshApprovalsTab();
 }
 
+async function switchApprovalTab(filter) {
+  STATE.approvalFilter = filter;
+  document.querySelectorAll('.approval-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+  await refreshApprovalsTab();
+}
+
 async function refreshApprovalsTab() {
   const container = document.getElementById('approvalsCardsContainer');
   if (!container) return;
+
+  if (STATE.approvalFilter === 'expense') {
+    const expRes = await apiFetch('/api/expenses');
+    const expenses = (expRes && expRes.data) ? expRes.data : STATE.expenses;
+    STATE.expenses = expenses;
+    const pendingExpenses = expenses.filter(e => e.status === 'SUBMITTED' || e.status === 'PENDING');
+
+    const countEl = document.getElementById('approvalCountExpense');
+    if (countEl) countEl.textContent = pendingExpenses.length;
+
+    if (pendingExpenses.length === 0) {
+      container.innerHTML = `
+        <div class="glass-panel p-8 rounded-2xl border border-slate-800 text-center">
+          <i data-lucide="receipt" class="w-10 h-10 text-emerald-400 mx-auto mb-2"></i>
+          <h3 class="text-base font-bold text-white">No Pending Expense Reports</h3>
+          <p class="text-xs text-slate-400 mt-1">All expense claims have been reviewed.</p>
+        </div>
+      `;
+      safeCreateIcons();
+      return;
+    }
+
+    container.innerHTML = pendingExpenses.map(e => `
+      <div class="glass-panel approval-card neon-border-card p-6 rounded-2xl border border-emerald-500/30">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div class="flex items-start gap-4">
+            <div class="user-avatar-ring lg emerald">${(e.employeeName || 'PS').substring(0, 2).toUpperCase()}</div>
+            <div>
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-extrabold text-[10px] border border-emerald-500/40">EXPENSE REVIEW</span>
+              <h3 class="font-bold text-lg text-white mt-1">${e.title || e.reportTitle || 'Business Meal & Transport'}</h3>
+              <p class="text-xs text-slate-400">Category: <strong>${e.category || 'MEALS'}</strong> • Trip: ${e.tripReference || 'Delhi Summit'}</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-slate-400">Claim Amount</div>
+            <div class="text-2xl font-extrabold text-white">${formatMoney(e.totalAmount || e.amount || 1450)}</div>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 mt-5 pt-4 border-t border-slate-800">
+          <button onclick="navigateToTab('expenses')" class="px-4 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 text-slate-200 font-bold text-xs transition">View Details</button>
+          <button onclick="settleSpecificExpense(${e.id})" class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition flex items-center gap-2">
+            <i data-lucide="wallet" class="w-4 h-4"></i> Approve Reimbursement
+          </button>
+        </div>
+      </div>
+    `).join('');
+    safeCreateIcons();
+    return;
+  }
+
+  if (STATE.approvalFilter === 'change') {
+    container.innerHTML = `
+      <div class="glass-panel approval-card neon-border-card p-6 rounded-2xl border border-violet-500/30">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-start gap-4">
+            <div class="user-avatar-ring lg">PS</div>
+            <div>
+              <span class="px-2.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-extrabold text-[10px] border border-violet-500/40">ITINERARY CHANGE</span>
+              <h3 class="font-bold text-lg text-white mt-1">Return Flight Reschedule — DEL ➔ HYD</h3>
+              <p class="text-xs text-slate-400">Employee requested return shift from 18 Sep to 19 Sep due to client workshop extension.</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-slate-400">Fare Difference</div>
+            <div class="text-2xl font-extrabold text-amber-400">+${formatMoney(1200)}</div>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 mt-5 pt-4 border-t border-slate-800">
+          <button onclick="showToast('Change request declined.', 'warning')" class="px-4 py-2 rounded-xl bg-rose-600/20 border border-rose-500/30 text-rose-300 font-bold text-xs">Decline</button>
+          <button onclick="showToast('Itinerary change approved. Updated e-ticket issued.', 'success')" class="px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs">Approve Change</button>
+        </div>
+      </div>
+    `;
+    safeCreateIcons();
+    return;
+  }
 
   const res = await apiFetch('/api/travel-requests');
   const requests = (res && res.data) ? res.data : STATE.requests;
@@ -1759,15 +2707,18 @@ async function refreshApprovalsTab() {
   }
 
   container.innerHTML = pending.map(r => `
-    <div class="glass-panel p-6 rounded-2xl border border-amber-500/30 glow-indigo">
+    <div class="glass-panel approval-card neon-border-card p-6 rounded-2xl border border-amber-500/30">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-        <div>
+        <div class="flex items-start gap-4">
+          <div class="user-avatar-ring lg">PS</div>
+          <div>
           <div class="flex items-center gap-2">
             <span class="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-extrabold text-[10px] border border-amber-500/40">ACTION REQUIRED</span>
             <span class="font-mono text-indigo-300 font-bold text-xs">${r.requestNumber || ('TR-' + r.id)}</span>
           </div>
           <h3 class="font-bold text-lg text-white mt-1">${r.tripName || 'Annual Client Engagement'}</h3>
           <p class="text-xs text-slate-400">Employee: <strong>Priya Sharma</strong> (Engineering) • Route: <strong>${r.origin || 'HYD'} ➔ ${r.destination || 'DEL'}</strong></p>
+          </div>
         </div>
         <div class="text-right">
           <div class="text-xs text-slate-400">Estimated Budget</div>
@@ -1807,6 +2758,15 @@ async function refreshApprovalsTab() {
       </div>
     </div>
   `).join('');
+
+  const countEl = document.getElementById('approvalCountTravel');
+  if (countEl) countEl.textContent = pending.length;
+
+  const expenseCountEl = document.getElementById('approvalCountExpense');
+  if (expenseCountEl) {
+    const pendingExpenses = (STATE.expenses || []).filter(e => e.status === 'SUBMITTED' || e.status === 'PENDING');
+    expenseCountEl.textContent = pendingExpenses.length;
+  }
 
   safeCreateIcons();
 }
@@ -1850,11 +2810,17 @@ async function loadItineraryTab() {
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-extrabold text-white tracking-tight">Unified Trip Itinerary & E-Ticket</h1>
-        <p class="text-xs text-slate-400 mt-1">Live chronological timeline combining flights, airport transfers, hotel check-ins, and client meetings.</p>
+        <p class="text-xs text-slate-400 mt-1">Live bookings from <code class="text-indigo-300">GET /api/bookings/my</code> — flights, transfers, hotels, and meetings.</p>
       </div>
       <div class="flex items-center gap-3">
+        <button onclick="downloadItineraryPdf()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-800 hover:bg-dark-700 border border-slate-700 text-slate-200 font-bold text-xs transition">
+          <i data-lucide="file-down" class="w-4 h-4"></i> PDF Itinerary
+        </button>
+        <button onclick="downloadBoardingPassPdf()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-800 hover:bg-dark-700 border border-slate-700 text-slate-200 font-bold text-xs transition">
+          <i data-lucide="ticket" class="w-4 h-4"></i> PDF Boarding Pass
+        </button>
         <button onclick="openBoardingPassModal()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition">
-          <i data-lucide="ticket" class="w-4 h-4"></i> View Boarding Pass
+          <i data-lucide="smartphone" class="w-4 h-4"></i> Wallet View
         </button>
         <button onclick="goToFlowStep(5)" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition">
           <span>Start Trip & Duty of Care</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
@@ -1862,60 +2828,82 @@ async function loadItineraryTab() {
       </div>
     </div>
 
-    <!-- Timeline Container -->
-    <div class="glass-panel p-8 rounded-2xl border border-slate-800">
-      <div class="border-b border-slate-800 pb-4 mb-6 flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-bold text-white">Trip: Annual Tech Summit & Architecture Review (Delhi NCR)</h2>
-          <p class="text-xs text-indigo-400 font-semibold mt-0.5">PNR: PNR683921 • E-Ticket: ETK-098-8472910 • Travel Dates: Sep 15 - Sep 18, 2026</p>
+    <div id="itineraryContainer" class="glass-panel p-8 rounded-2xl border border-slate-800">
+      <div class="text-center text-slate-400 text-sm py-8">Loading itinerary from backend...</div>
+    </div>
+  `;
+
+  safeCreateIcons();
+
+  const res = await apiFetch('/api/bookings/my');
+  const bookings = (res && res.data) ? res.data : STATE.bookings;
+  const active = bookings && bookings.length > 0 ? bookings[0] : null;
+  STATE.activeBookingId = active ? active.id : null;
+  const container = document.getElementById('itineraryContainer');
+
+  if (!container) return;
+
+  if (!active) {
+    container.innerHTML = `
+      <div class="text-center py-10">
+        <i data-lucide="calendar-x" class="w-12 h-12 text-slate-500 mx-auto mb-3"></i>
+        <p class="text-slate-400 text-sm">No confirmed bookings yet. Complete the travel request flow to generate an itinerary.</p>
+        <button onclick="navigateToTab('search')" class="mt-4 px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs">Book Travel</button>
+      </div>
+    `;
+    safeCreateIcons();
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="popout-3d border-b border-slate-800 pb-4 mb-6 flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-white">Trip: ${active.tripName || active.bookingReference || 'Corporate Business Trip'}</h2>
+        <p class="text-xs text-indigo-400 font-semibold mt-0.5">PNR: ${active.pnrNumber || 'PNR683921'} • E-Ticket: ${active.eTicketNumber || 'ETK-098-8472910'} • Ref: ${active.bookingReference || 'BK-0001'}</p>
+      </div>
+      <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-extrabold border border-emerald-500/30">${active.status || 'CONFIRMED'} ITINERARY</span>
+    </div>
+
+    <div class="space-y-6 relative pl-6">
+      <div class="relative flex items-start gap-4">
+        <div class="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-600/30 z-10">
+          <i data-lucide="plane-takeoff" class="w-4 h-4"></i>
         </div>
-        <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-extrabold border border-emerald-500/30">CONFIRMED ITINERARY</span>
+        <div class="flex-1 bg-dark-900/80 border border-slate-800 p-4 rounded-2xl stat-card-3d">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-indigo-400">07:30 AM • Departure</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">${active.bookingType || 'FLIGHT'}</span>
+          </div>
+          <h4 class="font-bold text-sm text-white mt-1">Confirmed Flight Booking</h4>
+          <p class="text-xs text-slate-400 mt-1">Total: ${formatMoney(active.totalAmount || 28000)} • Payment: ${active.paymentMethod || 'CORPORATE_CARD'}</p>
+        </div>
       </div>
 
-      <div class="space-y-6 relative pl-6">
-        <!-- Event 1: Flight Departure -->
-        <div class="relative flex items-start gap-4">
-          <div class="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-600/30 z-10">
-            <i data-lucide="plane-takeoff" class="w-4 h-4"></i>
-          </div>
-          <div class="flex-1 bg-dark-900/80 border border-slate-800 p-4 rounded-2xl">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-mono font-bold text-indigo-400">07:30 AM • Sep 15</span>
-              <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">FLIGHT AI-839</span>
-            </div>
-            <h4 class="font-bold text-sm text-white mt-1">Flight Departure (Hyderabad HYD ➔ Delhi DEL)</h4>
-            <p class="text-xs text-slate-400 mt-1">Rajiv Gandhi Intl Airport Terminal 1 • Seat 14A (Window) • 25kg Checked Baggage</p>
-          </div>
+      <div class="relative flex items-start gap-4">
+        <div class="h-8 w-8 rounded-full bg-amber-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-amber-600/30 z-10">
+          <i data-lucide="car" class="w-4 h-4"></i>
         </div>
-
-        <!-- Event 2: Airport Transfer -->
-        <div class="relative flex items-start gap-4">
-          <div class="h-8 w-8 rounded-full bg-amber-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-amber-600/30 z-10">
-            <i data-lucide="car" class="w-4 h-4"></i>
+        <div class="flex-1 bg-dark-900/80 border border-slate-800 p-4 rounded-2xl stat-card-3d">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-amber-400">10:30 AM • Transfer</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">UBER CORPORATE</span>
           </div>
-          <div class="flex-1 bg-dark-900/80 border border-slate-800 p-4 rounded-2xl">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-mono font-bold text-amber-400">10:30 AM • Sep 15</span>
-              <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">UBER CORPORATE</span>
-            </div>
-            <h4 class="font-bold text-sm text-white mt-1">Executive Airport Transfer to Hotel</h4>
-            <p class="text-xs text-slate-400 mt-1">IGIA Terminal 3 Uber Zone ➔ Taj Palace Diplomatic Enclave • Ref: UBER-TRIP-749</p>
-          </div>
+          <h4 class="font-bold text-sm text-white mt-1">Executive Airport Transfer</h4>
+          <p class="text-xs text-slate-400 mt-1">Airport pickup to corporate hotel • Ref: UBER-TRIP-749</p>
         </div>
+      </div>
 
-        <!-- Event 3: Hotel Check-in -->
-        <div class="relative flex items-start gap-4">
-          <div class="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-emerald-600/30 z-10">
-            <i data-lucide="hotel" class="w-4 h-4"></i>
+      <div class="relative flex items-start gap-4">
+        <div class="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-emerald-600/30 z-10">
+          <i data-lucide="hotel" class="w-4 h-4"></i>
+        </div>
+        <div class="flex-1 bg-dark-900/80 border border-slate-800 p-4 rounded-2xl stat-card-3d">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-emerald-400">12:00 PM • Check-in</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">HOTEL</span>
           </div>
-          <div class="flex-1 bg-dark-900/80 border border-slate-800 p-4 rounded-2xl">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-mono font-bold text-emerald-400">12:00 PM • Sep 15</span>
-              <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">HOTEL CHECK-IN</span>
-            </div>
-            <h4 class="font-bold text-sm text-white mt-1">Taj Palace & Executive Suites Check-In</h4>
-            <p class="text-xs text-slate-400 mt-1">Chanakyapuri Diplomatic Enclave • Deluxe King Suite • Complimentary Breakfast</p>
-          </div>
+          <h4 class="font-bold text-sm text-white mt-1">Corporate Hotel Accommodation</h4>
+          <p class="text-xs text-slate-400 mt-1">Negotiated corporate rate applied • Complimentary breakfast included</p>
         </div>
       </div>
     </div>
@@ -1928,52 +2916,49 @@ function openBoardingPassModal() {
   const modalContainer = document.getElementById('modalContainer');
   modalContainer.innerHTML = `
     <div class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-gradient-to-br from-dark-800 to-dark-900 border border-indigo-500/40 rounded-3xl w-full max-w-xl shadow-2xl p-8 relative overflow-hidden">
-        <div class="flex items-center justify-between pb-4 border-b border-slate-700">
-          <div class="flex items-center gap-2">
-            <i data-lucide="plane" class="w-6 h-6 text-indigo-400"></i>
-            <div>
-              <h3 class="font-extrabold text-lg text-white">AIR INDIA ELECTRONIC BOARDING PASS</h3>
-              <p class="text-[10px] text-indigo-300 font-mono">PNR: PNR683921 • TICKET: ETK-098-8472910</p>
+      <div class="boarding-pass-wallet w-full max-w-md shadow-2xl relative">
+        <div class="boarding-pass-card">
+          <div class="boarding-pass-header">
+            <div class="flex items-center gap-2">
+              <i data-lucide="plane" class="w-5 h-5 text-brand-300"></i>
+              <div>
+                <h3 class="font-extrabold text-sm text-white tracking-wide">AIR INDIA • BOARDING PASS</h3>
+                <p class="text-[10px] text-indigo-200 font-mono">PNR683921 • ETK-098-8472910</p>
+              </div>
             </div>
+            <button onclick="closeModal()" class="text-slate-300 hover:text-white p-1 rounded-lg">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
           </div>
-          <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
-        </div>
-
-        <div class="my-6 space-y-6">
-          <div class="flex justify-between items-center bg-dark-900/90 p-4 rounded-2xl border border-slate-800">
+          <div class="boarding-pass-route">
             <div>
-              <span class="text-3xl font-extrabold text-white">HYD</span>
-              <span class="text-xs text-slate-400 block font-medium">Hyderabad Terminal 1</span>
-              <span class="text-xs text-indigo-400 font-bold mt-1 block">07:30 AM</span>
+              <span class="boarding-airport-code">HYD</span>
+              <span class="boarding-airport-meta">Terminal 1 • 07:30</span>
             </div>
-            <div class="text-center px-4">
-              <i data-lucide="plane" class="w-6 h-6 text-indigo-400 mx-auto"></i>
-              <span class="text-[10px] font-mono text-slate-500">AI-839 (2h 15m)</span>
+            <div class="boarding-route-plane">
+              <i data-lucide="plane" class="w-5 h-5"></i>
+              <span>AI-839</span>
             </div>
             <div class="text-right">
-              <span class="text-3xl font-extrabold text-white">DEL</span>
-              <span class="text-xs text-slate-400 block font-medium">Delhi Terminal 3</span>
-              <span class="text-xs text-indigo-400 font-bold mt-1 block">09:45 AM</span>
+              <span class="boarding-airport-code">DEL</span>
+              <span class="boarding-airport-meta">Terminal 3 • 09:45</span>
             </div>
           </div>
-
-          <div class="grid grid-cols-4 gap-3 text-center text-xs bg-dark-900/60 p-3.5 rounded-xl border border-slate-800">
-            <div><span class="text-slate-500 block">Passenger</span> <strong class="text-white font-bold">P. Sharma</strong></div>
-            <div><span class="text-slate-500 block">Gate</span> <strong class="text-emerald-400 font-bold">B14</strong></div>
-            <div><span class="text-slate-500 block">Seat</span> <strong class="text-indigo-400 font-bold">14A</strong></div>
-            <div><span class="text-slate-500 block">Class</span> <strong class="text-white font-bold">Economy</strong></div>
+          <div class="boarding-pass-grid">
+            <div><span class="label">Passenger</span><strong>Priya Sharma</strong></div>
+            <div><span class="label">Seat</span><strong class="text-indigo-300">14A</strong></div>
+            <div><span class="label">Gate</span><strong class="text-emerald-400">B14</strong></div>
+            <div><span class="label">Class</span><strong>Economy</strong></div>
+          </div>
+          <div class="boarding-pass-barcode">
+            <div class="barcode-lines"></div>
+            <span class="text-[10px] text-slate-400 font-mono">Scan at security • Corporate approved</span>
           </div>
         </div>
-
-        <div class="flex items-center justify-between pt-4 border-t border-slate-700">
-          <div class="text-[10px] text-slate-400">
-            <i data-lucide="shield-check" class="w-3.5 h-3.5 inline text-emerald-400"></i> Corporate Policy Approved • Verified
-          </div>
+        <div class="boarding-pass-actions">
+          <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-dark-800 border border-slate-700 text-slate-300 font-bold text-xs">Close</button>
           <button onclick="goToFlowStep(5); closeModal();" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition flex items-center gap-1.5">
-            <span>Proceed to Step 5: Duty of Care</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            Duty of Care <i data-lucide="arrow-right" class="w-4 h-4"></i>
           </button>
         </div>
       </div>
@@ -2287,6 +3272,19 @@ function loadAiAssistantTab() {
         </button>
       </div>
     </div>
+
+    <!-- Platform overview -->
+    <div class="site-platform-overview glass-panel p-6 mb-8 overflow-hidden">
+      <div class="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
+        <div class="flex-1">
+          <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
+            <i data-lucide="route" class="w-5 h-5 text-brand-300"></i> End-to-end travel lifecycle
+          </h3>
+          <p class="text-xs text-slate-400 mt-2">Book, approve, travel, and reconcile — all in one platform built for global teams.</p>
+        </div>
+        <img src="${WORKFLOW_IMAGES.workflowReference}" alt="Corporate travel platform overview" class="workflow-reference-image rounded-2xl border border-slate-700 shadow-2xl max-w-sm w-full">
+      </div>
+    </div>
   `;
 
   safeCreateIcons();
@@ -2433,7 +3431,7 @@ async function loadAnalyticsTab() {
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-extrabold text-white tracking-tight">Executive Travel Analytics & Spending ROI</h1>
-        <p class="text-xs text-slate-400 mt-1">Multi-dimensional analytics for executive leadership, spend forecast, savings, and sustainability.</p>
+        <p class="text-xs text-slate-400 mt-1">Live data from <code class="text-indigo-300">GET /api/analytics/dashboard</code> — spend forecast, savings, and sustainability.</p>
       </div>
       <div class="flex items-center gap-3">
         <button onclick="exportAnalyticsCsv()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-800 hover:bg-dark-700 border border-slate-700 text-slate-200 font-bold text-xs transition">
@@ -2443,6 +3441,10 @@ async function loadAnalyticsTab() {
           <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Restart Flow 🔄
         </button>
       </div>
+    </div>
+
+    <div id="analyticsSummaryCards" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="stat-card-3d glass-panel p-4 rounded-2xl border border-slate-800 col-span-2 md:col-span-4 text-center text-slate-400 text-xs">Loading executive analytics...</div>
     </div>
 
     <!-- Analytics Charts Grid -->
@@ -2461,27 +3463,79 @@ async function loadAnalyticsTab() {
         </div>
       </div>
     </div>
+
+    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+      <h3 class="font-extrabold text-sm text-white mb-4">Top Destinations</h3>
+      <div id="topDestinationsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs"></div>
+    </div>
   `;
 
   safeCreateIcons();
-  setTimeout(renderCharts, 100);
+
+  const res = await apiFetch('/api/analytics/dashboard');
+  const analyticsData = (res && res.data) ? res.data : null;
+  renderAnalyticsSummaryCards(analyticsData);
+  setTimeout(() => renderCharts(analyticsData), 100);
 }
 
-function renderCharts() {
+function renderAnalyticsSummaryCards(data) {
+  const container = document.getElementById('analyticsSummaryCards');
+  if (!container) return;
+  if (!data) {
+    container.innerHTML = '<div class="col-span-4 text-center text-slate-400 text-xs">Analytics unavailable</div>';
+    return;
+  }
+  container.innerHTML = `
+    <div class="stat-card-3d glass-panel p-4 rounded-2xl border border-slate-800">
+      <span class="text-xs text-slate-400">Total Travel Spend</span>
+      <div class="text-xl font-extrabold text-white mt-1">${formatMoney(data.totalTravelSpend)}</div>
+    </div>
+    <div class="stat-card-3d glass-panel p-4 rounded-2xl border border-slate-800">
+      <span class="text-xs text-slate-400">Total Savings</span>
+      <div class="text-xl font-extrabold text-emerald-400 mt-1">${formatMoney(data.totalSavings)}</div>
+    </div>
+    <div class="stat-card-3d glass-panel p-4 rounded-2xl border border-slate-800">
+      <span class="text-xs text-slate-400">Policy Compliance</span>
+      <div class="text-xl font-extrabold text-indigo-400 mt-1">${data.policyComplianceRate || 0}%</div>
+    </div>
+    <div class="stat-card-3d glass-panel p-4 rounded-2xl border border-slate-800">
+      <span class="text-xs text-slate-400">CO₂ Emissions</span>
+      <div class="text-xl font-extrabold text-cyan-400 mt-1">${data.totalCarbonEmissionsKg || 0} kg</div>
+    </div>
+  `;
+
+  const destList = document.getElementById('topDestinationsList');
+  if (destList && data.topDestinations) {
+    destList.innerHTML = data.topDestinations.map(d => `
+      <div class="p-3 rounded-xl bg-dark-900/80 border border-slate-800 flex items-center justify-between">
+        <div>
+          <div class="font-bold text-white">${d.destination}</div>
+          <div class="text-slate-400">${d.tripCount} trips</div>
+        </div>
+        <div class="font-extrabold text-indigo-300">${formatMoney(d.totalSpend)}</div>
+      </div>
+    `).join('');
+  }
+}
+
+function renderCharts(analyticsData) {
   try {
     if (typeof Chart === 'undefined') return;
+
+    const trends = (analyticsData && analyticsData.monthlyTrends) ? analyticsData.monthlyTrends : [];
+    const depts = (analyticsData && analyticsData.departmentBreakdown) ? analyticsData.departmentBreakdown : [];
 
     const ctx1 = document.getElementById('monthlySpendChart');
     if (ctx1) {
       new Chart(ctx1, {
         type: 'line',
         data: {
-          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+          labels: trends.length ? trends.map(t => t.month) : ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
           datasets: [{
             label: 'Total Spend (₹)',
-            data: [225000, 270000, 338000, 274000, 377000, 420000],
-            borderColor: '#6366f1',
-            backgroundColor: 'rgba(99, 102, 241, 0.15)',
+            data: trends.length ? trends.map(t => Number(t.totalSpend)) : [225000, 270000, 338000, 274000, 377000],
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0, 123, 255, 0.15)',
             fill: true,
             tension: 0.4
           }]
@@ -2503,10 +3557,10 @@ function renderCharts() {
       new Chart(ctx2, {
         type: 'doughnut',
         data: {
-          labels: ['Global Sales', 'Engineering R&D', 'Customer Success', 'Executive Ops'],
+          labels: depts.length ? depts.map(d => d.departmentName) : ['Sales', 'Engineering', 'Customer Success', 'Executive'],
           datasets: [{
-            data: [1140000, 620000, 290000, 480000],
-            backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ec4899']
+            data: depts.length ? depts.map(d => Number(d.spentAmount)) : [1140000, 620000, 290000, 480000],
+            backgroundColor: ['#007bff', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6']
           }]
         },
         options: {
@@ -2522,14 +3576,23 @@ function renderCharts() {
 }
 
 function exportAnalyticsCsv() {
-  const csvContent = "data:text/csv;charset=utf-8,Month,FlightSpend,HotelSpend,TransportSpend,TotalSpend\nJan,120000,80000,25000,225000\nFeb,145000,95000,30000,270000\nMar,190000,110000,38000,338000\nApr,160000,85000,29000,274000\nMay,210000,125000,42000,377000";
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", "corporate_travel_spend_report.csv");
-  document.body.appendChild(link);
-  link.click();
-  showToast('Finance CSV report downloaded successfully!');
+  apiFetch('/api/analytics/dashboard').then(res => {
+    const data = (res && res.data) ? res.data : null;
+    const trends = (data && data.monthlyTrends) ? data.monthlyTrends : [];
+    let csv = 'Month,FlightSpend,HotelSpend,TransportSpend,TotalSpend\n';
+    if (trends.length) {
+      csv += trends.map(t => `${t.month},${t.flightSpend},${t.hotelSpend},${t.transportSpend},${t.totalSpend}`).join('\n');
+    } else {
+      csv += 'Jan,120000,80000,25000,225000\nFeb,145000,95000,30000,270000';
+    }
+    const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csv);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'corporate_travel_spend_report.csv');
+    document.body.appendChild(link);
+    link.click();
+    showToast('Finance CSV report downloaded successfully!');
+  });
 }
 
 // =========================================================================
@@ -2560,7 +3623,21 @@ function loadSettingsTab() {
         </div>
       </div>
 
-      <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+      <div class="glass-panel popout-3d p-6 rounded-2xl border border-slate-800">
+        <h3 class="font-extrabold text-sm text-white mb-4">Notification & Email Preferences</h3>
+        <div class="space-y-3 text-xs">
+          <label class="flex items-center justify-between p-3 rounded-xl bg-dark-900 border border-slate-800 cursor-pointer">
+            <span><strong class="text-white block">Email travel alerts</strong><span class="text-slate-400 text-[11px]">Booking confirmations, approvals, reimbursements (SMTP demo logs when disabled)</span></span>
+            <input type="checkbox" id="emailNotifToggle" ${STATE.emailNotificationsEnabled ? 'checked' : ''} onchange="toggleEmailNotifications(this.checked)" class="accent-brand-500 w-4 h-4">
+          </label>
+          <label class="flex items-center justify-between p-3 rounded-xl bg-dark-900 border border-slate-800 cursor-pointer">
+            <span><strong class="text-white block">In-app real-time alerts</strong><span class="text-slate-400 text-[11px]">WebSocket push for bookings and approvals</span></span>
+            <input type="checkbox" checked disabled class="accent-brand-500 w-4 h-4 opacity-60">
+          </label>
+        </div>
+      </div>
+
+      <div class="glass-panel popout-3d p-6 rounded-2xl border border-slate-800">
         <h3 class="font-extrabold text-sm text-white mb-4">Preferred Corporate Vendors</h3>
         <div class="space-y-3 text-xs">
           <div class="p-3 rounded-xl bg-dark-900 border border-slate-800 flex justify-between items-center">
@@ -2700,21 +3777,64 @@ function launchModule(moduleId) {
   showToast(`Opened ${moduleId.toUpperCase()} module`);
 }
 
-function toggleNotificationsModal() {
+function getNotificationStyle(type) {
+  const styles = {
+    APPROVED: { icon: 'check-circle-2', cls: 'notif-approved' },
+    BOOKING: { icon: 'ticket', cls: 'notif-booking' },
+    ALERT: { icon: 'shield-alert', cls: 'notif-alert' },
+    EXPENSE: { icon: 'receipt', cls: 'notif-expense' }
+  };
+  return styles[type] || { icon: 'bell', cls: 'notif-default' };
+}
+
+function handleNotificationClick(id) {
+  const n = STATE.notifications.find(item => item.id === id);
+  toggleNotificationsModal();
+  if (!n) {
+    navigateToTab('dashboard');
+    return;
+  }
+  if ((n.type || '').includes('BOOKING') || (n.title || '').toLowerCase().includes('booking')) {
+    navigateToTab('itinerary');
+  } else if ((n.type || '').includes('APPROVED') || (n.title || '').toLowerCase().includes('approved')) {
+    navigateToTab('approvals');
+  } else if ((n.title || '').toLowerCase().includes('expense')) {
+    navigateToTab('expenses');
+  } else {
+    navigateToTab('dashboard');
+  }
+}
+
+async function toggleNotificationsModal() {
   const modal = document.getElementById('notifModal');
   const container = document.getElementById('notifListContainer');
   if (!modal || !container) return;
   
   if (modal.classList.contains('hidden')) {
-    container.innerHTML = STATE.notifications.map(n => `
-      <div class="p-3 rounded-xl bg-dark-900 border border-slate-800 text-xs">
-        <div class="flex items-center justify-between font-bold text-white">
-          <span>${n.title}</span>
-          <span class="text-[10px] text-slate-500">${n.time}</span>
+    if (STATE.isAuthenticated) {
+      const res = await apiFetch('/api/notifications');
+      if (res && res.data) {
+        STATE.notifications = res.data.map(mapNotification);
+        updateNotificationBadge();
+      }
+    }
+    container.innerHTML = STATE.notifications.length ? STATE.notifications.map(n => {
+      const style = getNotificationStyle(n.type);
+      return `
+      <button type="button" onclick="handleNotificationClick(${n.id})" class="notif-item ${style.cls} w-full text-left p-3 rounded-xl bg-dark-900 border border-slate-800 text-xs stat-card-3d hover:border-brand-500/40 transition">
+        <div class="flex items-start gap-3">
+          <div class="notif-icon-wrap"><i data-lucide="${style.icon}" class="w-4 h-4"></i></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between font-bold text-white gap-2">
+              <span class="truncate">${n.title}</span>
+              <span class="text-[10px] text-slate-500 shrink-0">${n.time}</span>
+            </div>
+            <p class="text-slate-400 text-[11px] mt-1 line-clamp-2">${n.desc}</p>
+          </div>
         </div>
-        <p class="text-slate-400 text-[11px] mt-1">${n.desc}</p>
-      </div>
-    `).join('');
+      </button>
+    `;
+    }).join('') : '<div class="text-center text-slate-400 text-xs py-8">No notifications yet</div>';
     modal.classList.remove('hidden');
   } else {
     modal.classList.add('hidden');
@@ -2722,54 +3842,244 @@ function toggleNotificationsModal() {
   safeCreateIcons();
 }
 
-function toggleLiveChatDrawer() {
+async function toggleLiveChatDrawer() {
   const drawer = document.getElementById('chatDrawer');
-  if (drawer) drawer.classList.toggle('hidden');
+  if (!drawer) return;
+  const opening = drawer.classList.contains('hidden');
+  drawer.classList.toggle('hidden');
+  if (opening && STATE.isAuthenticated) {
+    await loadChatHubs();
+    await loadChatConversation();
+  }
   safeCreateIcons();
 }
 
-function sendChatMessage() {
+async function loadChatHubs() {
+  const sidebar = document.getElementById('chatHubList');
+  if (!sidebar) return;
+  const res = await apiFetch('/api/chat/hubs');
+  STATE.chatHubs = (res && res.data) ? res.data : [];
+  sidebar.innerHTML = STATE.chatHubs.map(hub => `
+    <button type="button" onclick="switchChatChannel('${hub.type}')" class="chat-hub-item ${STATE.chatChannel === hub.type ? 'active' : ''}" data-hub="${hub.type}">
+      <div class="chat-hub-avatar">${hub.type.charAt(0)}</div>
+      <div class="chat-hub-meta">
+        <div class="chat-hub-title">${hub.label.split('—')[0].trim()}</div>
+        <div class="chat-hub-sub">${hub.type === 'SUPPORT' ? '24/7 Travel Care' : hub.type === 'HR' ? 'HR & Duty of Care' : 'Line Manager'}</div>
+      </div>
+      ${Number(hub.unreadCount) > 0 ? `<span class="chat-hub-unread">${hub.unreadCount}</span>` : ''}
+    </button>
+  `).join('');
+}
+
+async function switchChatChannel(channel) {
+  disconnectChatWebSocket();
+  STATE.chatChannel = channel;
+  STATE.chatConversation = null;
+  document.querySelectorAll('.chat-channel-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.channel === channel);
+  });
+  await loadChatHubs();
+  await loadChatConversation();
+}
+
+function formatChatTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderChatMessages(messages) {
+  const box = document.getElementById('chatMessagesBox');
+  if (!box) return;
+  const list = Array.isArray(messages) ? messages : [];
+  if (list.length === 0) {
+    box.innerHTML = `<div class="wa-msg-row received"><div class="wa-avatar">A</div><div class="wa-bubble received"><div>Start a conversation in this hub.</div></div></div>`;
+    return;
+  }
+  box.innerHTML = list.map(m => {
+    const isUser = m.senderType === 'USER';
+    const time = formatChatTime(m.createdAt);
+    if (isUser) {
+      return `<div class="wa-msg-row sent"><div class="wa-bubble sent"><div>${escapeHtml(m.message)}</div><span class="wa-time">${time}</span></div></div>`;
+    }
+    return `<div class="wa-msg-row received"><div class="wa-avatar">${(STATE.chatChannel || 'S').charAt(0)}</div><div class="wa-bubble received"><div>${escapeHtml(m.message)}</div><span class="wa-time">${time}</span></div></div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function escapeHtml(text) {
+  return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function appendChatMessage(m) {
+  const box = document.getElementById('chatMessagesBox');
+  if (!box || !m) return;
+  const isUser = m.senderType === 'USER';
+  const time = formatChatTime(m.createdAt || new Date().toISOString());
+  const html = isUser
+    ? `<div class="wa-msg-row sent"><div class="wa-bubble sent"><div>${escapeHtml(m.message)}</div><span class="wa-time">${time}</span></div></div>`
+    : `<div class="wa-msg-row received"><div class="wa-avatar">${(STATE.chatChannel || 'S').charAt(0)}</div><div class="wa-bubble received"><div>${escapeHtml(m.message)}</div><span class="wa-time">${time}</span></div></div>`;
+  box.insertAdjacentHTML('beforeend', html);
+  box.scrollTop = box.scrollHeight;
+}
+
+function connectChatWebSocket(roomId) {
+  if (typeof SockJS === 'undefined' || typeof Stomp === 'undefined' || !roomId) return;
+  disconnectChatWebSocket();
+  try {
+    const socket = new SockJS('/ws');
+    STATE.chatStomp = Stomp.over(socket);
+    STATE.chatStomp.debug = () => {};
+    STATE.chatStomp.connect({}, () => {
+      STATE.chatStomp.subscribe(`/topic/messages/${roomId}`, (frame) => {
+        try {
+          const msg = JSON.parse(frame.body);
+          if (msg.senderType !== 'USER') appendChatMessage(msg);
+        } catch (e) { /* ignore */ }
+      });
+    });
+  } catch (e) {
+    console.warn('Chat WebSocket unavailable', e);
+  }
+}
+
+function disconnectChatWebSocket() {
+  if (STATE.chatStomp && STATE.chatStomp.connected) {
+    try { STATE.chatStomp.disconnect(); } catch (e) { /* ignore */ }
+  }
+  STATE.chatStomp = null;
+}
+
+async function loadChatConversation() {
+  const box = document.getElementById('chatMessagesBox');
+  if (!box) return;
+
+  const convRes = await apiFetch(`/api/chat/conversation?type=${encodeURIComponent(STATE.chatChannel || 'SUPPORT')}`);
+  if (!convRes || !convRes.data) return;
+
+  STATE.chatConversation = convRes.data;
+  const header = document.getElementById('chatActiveHubTitle');
+  if (header) {
+    const hub = STATE.chatHubs.find(h => h.type === STATE.chatChannel);
+    header.textContent = hub ? hub.label : 'Corporate Chat';
+  }
+
+  const msgRes = await apiFetch(`/api/chat/messages/${convRes.data.id}`);
+  const messages = (msgRes && msgRes.data) ? msgRes.data : [];
+  renderChatMessages(messages);
+  connectChatWebSocket(convRes.data.roomId);
+  await apiFetch(`/api/chat/messages/${convRes.data.id}/read`, { method: 'POST' });
+  await loadChatHubs();
+}
+
+async function sendChatMessage() {
   const input = document.getElementById('chatInputText');
   const box = document.getElementById('chatMessagesBox');
   if (!input || !input.value.trim() || !box) return;
 
   const msg = input.value.trim();
   input.value = '';
+  appendChatMessage({ senderType: 'USER', message: msg, createdAt: new Date().toISOString() });
 
-  box.innerHTML += `
-    <div class="flex gap-2 justify-end">
-      <div class="bg-indigo-600 p-2.5 rounded-xl rounded-tr-none max-w-[80%] text-white">
-        ${msg}
-      </div>
-    </div>
-  `;
-  box.scrollTop = box.scrollHeight;
+  if (!STATE.chatConversation) await loadChatConversation();
+  if (!STATE.chatConversation) return;
 
-  setTimeout(() => {
-    box.innerHTML += `
-      <div class="flex gap-2">
-        <div class="h-6 w-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold">CS</div>
-        <div class="bg-dark-700 p-2.5 rounded-xl rounded-tr-none max-w-[80%] text-slate-200">
-          Hello Priya! I have confirmed your Taj Palace reservation in Delhi. How can I assist with your itinerary?
-        </div>
-      </div>
-    `;
-    box.scrollTop = box.scrollHeight;
-  }, 1000);
+  await apiFetch(`/api/chat/messages?roomId=${encodeURIComponent(STATE.chatConversation.roomId)}&senderType=USER`, {
+    method: 'POST',
+    body: JSON.stringify(msg),
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  setTimeout(async () => {
+    const msgRes = await apiFetch(`/api/chat/messages/${STATE.chatConversation.id}`);
+    const messages = (msgRes && msgRes.data) ? msgRes.data : [];
+    renderChatMessages(messages);
+    await loadChatHubs();
+  }, 600);
+}
+
+function connectNotificationWebSocket() {
+  if (!STATE.token || typeof SockJS === 'undefined' || typeof Stomp === 'undefined') return;
+  try {
+    const socket = new SockJS('/ws');
+    const client = Stomp.over(socket);
+    client.debug = () => {};
+    client.connect({}, () => {
+      const userId = STATE.currentUser.id || 5;
+      client.subscribe(`/topic/alerts/${userId}`, async () => {
+        const res = await apiFetch('/api/notifications');
+        if (res && res.data) {
+          STATE.notifications = res.data.map(mapNotification);
+          updateNotificationBadge();
+        }
+      });
+    });
+  } catch (e) { /* optional */ }
+}
+
+async function downloadPdf(url, filename) {
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${STATE.token}`, Accept: 'application/pdf' } });
+    if (!res.ok) throw new Error('Download failed');
+    const blob = await res.blob();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    showToast(`Downloaded ${filename}`, 'success');
+  } catch (e) {
+    showToast('PDF download failed. Complete a booking first.', 'warning');
+  }
+}
+
+function downloadBoardingPassPdf() {
+  if (!STATE.activeBookingId) { showToast('No active booking for PDF.', 'warning'); return; }
+  downloadPdf(`/api/documents/bookings/${STATE.activeBookingId}/boarding-pass.pdf`, `boarding-pass-${STATE.activeBookingId}.pdf`);
+}
+
+function downloadItineraryPdf() {
+  if (!STATE.activeBookingId) { showToast('No active booking for PDF.', 'warning'); return; }
+  downloadPdf(`/api/documents/bookings/${STATE.activeBookingId}/itinerary.pdf`, `itinerary-${STATE.activeBookingId}.pdf`);
+}
+
+async function runAiPolicyCheck() {
+  const origin = document.getElementById('searchOrigin')?.value || 'Hyderabad';
+  const dest = document.getElementById('searchDest')?.value || 'Delhi';
+  const res = await apiFetch('/api/ai/policy-check', {
+    method: 'POST',
+    body: { message: `Check policy compliance for trip ${origin} to ${dest} under 30000 INR` }
+  });
+  const data = (res && res.data) ? res.data : null;
+  if (!data) { showToast('AI policy check unavailable.', 'warning'); return; }
+  showToast(data.policyAdvice || data.response?.substring(0, 120), 'info');
+}
+
+function toggleEmailNotifications(enabled) {
+  STATE.emailNotificationsEnabled = enabled;
+  localStorage.setItem('corporate_email_notif', enabled ? 'true' : 'false');
+  showToast(enabled ? 'Email notifications enabled (demo logs when SMTP off).' : 'Email notifications disabled.', 'info');
 }
 
 function openAiModal() {
   navigateToTab('ai-assistant');
 }
 
-function showToast(message) {
+function showToast(message, type = 'success') {
+  const styles = {
+    success: { bg: 'from-indigo-900 to-slate-900', border: 'border-indigo-500/50', icon: 'check-circle-2', iconColor: 'text-emerald-400' },
+    warning: { bg: 'from-amber-950 to-slate-900', border: 'border-amber-500/50', icon: 'alert-triangle', iconColor: 'text-amber-400' },
+    info: { bg: 'from-sky-950 to-slate-900', border: 'border-sky-500/50', icon: 'info', iconColor: 'text-sky-400' }
+  };
+  const s = styles[type] || styles.success;
   const toast = document.createElement('div');
-  toast.className = 'fixed bottom-6 left-6 z-50 px-4 py-3 rounded-2xl bg-gradient-to-r from-indigo-900 to-slate-900 border border-indigo-500/50 text-white font-semibold text-xs shadow-2xl flex items-center gap-2 animate-fade-in';
-  toast.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> <span>${message}</span>`;
+  toast.className = `toast-slide-in fixed bottom-6 left-6 z-[60] px-4 py-3 rounded-2xl bg-gradient-to-r ${s.bg} border ${s.border} text-white font-semibold text-xs shadow-2xl flex items-center gap-2 max-w-sm`;
+  toast.innerHTML = `<i data-lucide="${s.icon}" class="w-4 h-4 ${s.iconColor} shrink-0"></i> <span>${message}</span>`;
   document.body.appendChild(toast);
   safeCreateIcons();
   setTimeout(() => {
-    toast.remove();
+    toast.classList.add('toast-slide-out');
+    setTimeout(() => toast.remove(), 300);
   }, 4000);
 }
 
@@ -2802,6 +4112,24 @@ window.changeCurrency = changeCurrency;
 window.toggleNotificationsModal = toggleNotificationsModal;
 window.toggleLiveChatDrawer = toggleLiveChatDrawer;
 window.sendChatMessage = sendChatMessage;
+window.dismissSplash = dismissSplash;
+window.initHomepage3D = initHomepage3D;
+window.requestWizardNext = requestWizardNext;
+window.requestWizardPrev = requestWizardPrev;
+window.switchChatChannel = switchChatChannel;
+window.switchApprovalTab = switchApprovalTab;
+window.toggleFabMenu = toggleFabMenu;
+window.runFabAction = runFabAction;
+window.openProfileSheet = openProfileSheet;
+window.closeProfileSheet = closeProfileSheet;
+window.handleMobileProfileTap = handleMobileProfileTap;
+window.handleNotificationClick = handleNotificationClick;
+window.downloadBoardingPassPdf = downloadBoardingPassPdf;
+window.downloadItineraryPdf = downloadItineraryPdf;
+window.runAiPolicyCheck = runAiPolicyCheck;
+window.toggleEmailNotifications = toggleEmailNotifications;
+window.loadChatHubs = loadChatHubs;
+window.renderRequestWizardModal = renderRequestWizardModal;
 window.openAiModal = openAiModal;
 window.closeModal = closeModal;
 window.openNewRequestModal = openNewRequestModal;

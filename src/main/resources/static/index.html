@@ -1,38 +1,68 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Corporate Business Travel & Expense Platform</title>
+  <meta name="description" content="CorporateTravel360 — enterprise business travel, booking, approvals, and expense management for global teams.">
+  <title>CorporateTravel360 | Business Travel & Expense Management</title>
+
+  <!-- Travisa Template Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Poppins:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css">
+  <link rel="stylesheet" href="/travisa/lib/animate/animate.min.css">
+  <link rel="stylesheet" href="/travisa/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/travisa/css/style.css">
   
-  <!-- Tailwind CSS -->
+  <!-- Tailwind CSS (layout utilities) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      darkMode: 'class',
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['Open Sans', 'system-ui', 'sans-serif'],
+            heading: ['Poppins', 'sans-serif']
+          },
+          borderRadius: {
+            xl: '10px',
+            '2xl': '10px',
+            '3xl': '10px'
+          },
           colors: {
             brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              200: '#c7d2fe',
-              300: '#a5b4fc',
-              400: '#818cf8',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-              800: '#3730a3',
-              900: '#312e81',
-              950: '#1e1b4b'
+              50: '#F0F5FB',
+              100: '#dce8f5',
+              200: '#b8cfe8',
+              300: '#7aa3cc',
+              400: '#3d6f99',
+              500: '#003A66',
+              600: '#003A66',
+              700: '#002d4f',
+              800: '#002038',
+              900: '#001425',
+              950: '#000a12'
+            },
+            accent: {
+              400: '#f04d75',
+              500: '#E02454',
+              600: '#c41e48',
+              700: '#a0183a'
             },
             dark: {
-              900: '#070d1e',
-              800: '#0b132b',
-              700: '#1c2541',
-              600: '#3a506b',
-              500: '#5bc0be'
+              950: '#F0F5FB',
+              900: '#ffffff',
+              800: '#ffffff',
+              700: '#F0F5FB',
+              600: '#e8eef5',
+              500: '#003A66'
             }
+          },
+          boxShadow: {
+            neon: '0 0 15px rgba(0, 58, 102, 0.25)',
+            'neon-lg': '0 8px 32px rgba(0, 58, 102, 0.15)',
+            'neon-purple': '0 0 20px rgba(224, 36, 84, 0.2)'
           }
         }
       }
@@ -51,46 +81,69 @@
 
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body class="bg-dark-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+<body class="travisa-theme bg-light min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
 
-  <!-- Top Announcement / Live Flight Alert Banner -->
-  <div id="topAlertBanner" class="bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 px-4 py-2 text-xs font-medium text-indigo-200 border-b border-indigo-500/20 flex items-center justify-between no-print">
-    <div class="flex items-center gap-2">
-      <span class="flex h-2 w-2 relative">
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-      </span>
-      <span><strong>DEMO ENVIRONMENT:</strong> Search results and travel advisories use test-provider data unless a live provider is configured.</span>
+  <!-- Reference Workflow Splash Screen -->
+  <div id="splashScreen" class="splash-screen">
+    <div id="splashPhotoBg" class="splash-photo-bg"></div>
+    <div class="splash-scene">
+      <div class="splash-plane">
+        <i data-lucide="plane" class="w-16 h-16 text-brand-300"></i>
+      </div>
     </div>
-    <div class="flex items-center gap-4">
-      <a href="/swagger-ui/index.html" target="_blank" class="hover:text-white flex items-center gap-1 underline underline-offset-2">
-        <i data-lucide="file-code-2" class="w-3.5 h-3.5"></i> Swagger API Docs
-      </a>
+    <div class="splash-content glass-panel-3d">
+      <span class="splash-badge">Trusted by 2,400+ enterprises</span>
+      <h1 class="splash-title">Business travel,<br><span class="text-brand-300">simplified.</span></h1>
+      <p class="splash-subtitle">Book flights, manage approvals, track expenses, and keep travelers safe — one platform for your entire organization.</p>
+      <div class="splash-actions">
+        <button onclick="dismissSplash(true)" class="splash-btn-primary">
+          <i data-lucide="rocket" class="w-4 h-4"></i> Get Started
+        </button>
+        <button onclick="dismissSplash(false)" class="splash-btn-secondary">
+          Explore Workflow
+        </button>
+      </div>
+      <div class="splash-nav-hints">
+        <span>Explore</span><span>Work</span><span>Grow</span>
+      </div>
     </div>
   </div>
 
-  <!-- Header / Navigation Bar -->
-  <header class="bg-dark-800/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-4 lg:px-8 py-3 flex items-center justify-between no-print">
-    <!-- Brand Logo -->
-    <div class="flex items-center gap-3">
-      <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-        <i data-lucide="plane-takeoff" class="w-6 h-6"></i>
+  <!-- Travisa Topbar -->
+  <div id="topAlertBanner" class="container-fluid bg-primary px-4 px-lg-5 topbar site-status-bar no-print">
+    <div class="d-flex w-100 align-items-center justify-content-between flex-wrap gap-2 py-1">
+      <div class="d-flex align-items-center gap-2 text-white small">
+        <span class="rounded-circle bg-success d-inline-block" style="width:8px;height:8px;"></span>
+        <span>All systems operational</span>
+        <span class="d-none d-sm-inline opacity-75">• 24/7 global travel support</span>
       </div>
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-indigo-300">
-            AeroCorp Travel
-          </span>
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-semibold border border-brand-500/30">
-            ENTERPRISE SaaS
-          </span>
-        </div>
-        <p class="text-[11px] text-slate-400 font-medium">Acme Global Technologies Inc.</p>
+      <div class="d-flex align-items-center gap-3 small">
+        <span class="d-none d-md-inline text-white opacity-75">ISO 27001 • SOC 2</span>
+        <a href="/swagger-ui/index.html" target="_blank" class="text-white text-decoration-none">Developers</a>
       </div>
     </div>
+  </div>
+
+  <!-- Travisa Navbar -->
+  <div class="container-fluid nav-bar p-0 sticky-top z-40 no-print">
+  <header class="navbar navbar-expand-lg navbar-light bg-white px-4 px-lg-5 py-2 shadow-sm w-100">
+    <a href="#" onclick="navigateToTab('login-portal'); return false;" class="navbar-brand p-0 d-flex align-items-center gap-2 text-decoration-none">
+      <img id="siteLogoImg" src="/travisa/img/brand-logo.png" alt="CorporateTravel360" class="site-logo-mark" style="height:48px;width:auto;">
+      <div>
+        <span class="site-brand-name d-block">CorporateTravel360</span>
+        <small class="text-muted">Business Travel Platform</small>
+      </div>
+    </a>
+
+    <nav class="navbar-nav ms-auto d-none d-lg-flex align-items-center gap-1 site-header-nav" aria-label="Primary">
+      <a href="#" onclick="navigateToTab('login-portal'); return false;" class="nav-link">Product</a>
+      <a href="#" onclick="navigateToTab('search'); return false;" class="nav-link">Book Travel</a>
+      <a href="#" onclick="navigateToTab('analytics'); return false;" class="nav-link">Analytics</a>
+      <a href="#" onclick="toggleLiveChatDrawer(); return false;" class="nav-link">Support</a>
+    </nav>
 
     <!-- Center Mode Switch & Interactive Flow Stepper Controller -->
-    <div class="hidden md:flex items-center gap-2">
+    <div class="hidden md:flex items-center gap-2 dev-toolbar">
       <!-- Guided Flow Controller -->
       <div class="flex items-center bg-dark-900/90 p-1 rounded-xl border border-indigo-500/40 shadow-md">
         <button onclick="autoPlayFlow()" id="btnAutoPlayFlow" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white hover:brightness-110 shadow-sm">
@@ -113,21 +166,19 @@
     </div>
 
     <!-- Right Controls: Role Switcher, Currency, Notifications, User Profile -->
-    <div class="flex items-center gap-3">
+    <div class="d-flex align-items-center gap-2 ms-lg-3 flex-wrap justify-content-end">
       <!-- Currency Switcher -->
-      <select id="currencySelector" onchange="changeCurrency(this.value)" class="bg-dark-900 text-xs font-semibold text-slate-300 border border-slate-700 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none">
+      <select id="currencySelector" onchange="changeCurrency(this.value)" class="bg-white text-xs font-semibold text-brand-700 border border-brand-500/20 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-accent-500 outline-none">
         <option value="INR">₹ INR</option>
         <option value="USD">$ USD</option>
         <option value="EUR">€ EUR</option>
         <option value="GBP">£ GBP</option>
       </select>
 
-      <!-- Role Switcher (9 Roles) -->
-      <div class="flex items-center gap-1.5 bg-dark-900 border border-indigo-500/40 px-2 py-1 rounded-xl">
-        <span class="text-[11px] font-semibold text-indigo-300 flex items-center gap-1">
-          <i data-lucide="shield" class="w-3.5 h-3.5 text-indigo-400"></i> Role:
-        </span>
-        <select id="roleSelector" onchange="switchDemoRole(this.value)" class="bg-transparent text-xs font-bold text-white border-0 focus:ring-0 outline-none cursor-pointer">
+      <!-- Workspace switcher (demo) -->
+      <div class="site-workspace-select hidden sm:flex">
+        <span>View as</span>
+        <select id="roleSelector" onchange="switchDemoRole(this.value)" aria-label="Switch workspace view">
           <option value="ROLE_EMPLOYEE" class="bg-dark-800">Employee / Traveler</option>
           <option value="ROLE_APPROVER" class="bg-dark-800">Approver / Line Manager</option>
           <option value="ROLE_TRAVEL_MANAGER" class="bg-dark-800">Travel Manager</option>
@@ -140,14 +191,14 @@
         </select>
       </div>
 
-      <!-- Login Portal / Switch Account Button -->
-      <button onclick="openLoginPortalModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:brightness-110 text-white font-bold text-xs shadow-md transition" title="Open Enterprise Login & Role Switcher">
+      <!-- Sign in -->
+      <button onclick="openLoginPortalModal()" class="btn btn-primary border-secondary rounded-pill py-2 px-3 px-lg-4 text-white small fw-bold" title="Sign in to your workspace">
         <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
-        <span>Login Portal</span>
+        <span>Sign in</span>
       </button>
 
       <!-- All Modules Modal Button -->
-      <button onclick="openAllModulesModal()" class="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-dark-900 hover:bg-dark-700 border border-slate-700 text-indigo-300 hover:text-white font-semibold text-xs transition" title="View All Platform Modules">
+      <button onclick="openAllModulesModal()" class="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-brand-50 border border-brand-500/20 text-brand-700 hover:text-brand-900 font-semibold text-xs transition" title="View All Platform Modules">
         <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
         <span>Modules</span>
       </button>
@@ -155,17 +206,17 @@
       <!-- Notifications Bell -->
       <button onclick="toggleNotificationsModal()" class="relative p-2 rounded-xl bg-dark-900 hover:bg-dark-700 border border-slate-800 text-slate-300 hover:text-white transition">
         <i data-lucide="bell" class="w-4 h-4"></i>
-        <span id="notifBadge" class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-[9px] font-bold flex items-center justify-center text-white">3</span>
+        <span id="notifBadge" class="notif-badge-pulse absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-[9px] font-bold flex items-center justify-center text-white">3</span>
       </button>
 
       <!-- User Avatar / Click to Login or Switch -->
       <div onclick="navigateToTab('login-portal')" class="flex items-center gap-2.5 pl-2 border-l border-slate-800 cursor-pointer hover:opacity-80 transition" title="Click to open Login Portal / Switch Profile">
-        <div id="userAvatar" class="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white font-bold text-xs shadow-md">
+        <div id="userAvatar" class="h-8 w-8 rounded-full bg-gradient-to-br from-brand-600 to-accent-500 flex items-center justify-center text-white font-bold text-xs shadow-md">
           PS
         </div>
         <div class="hidden lg:block text-left">
           <p id="userNameDisplay" class="text-xs font-bold text-white">Priya Sharma</p>
-          <p id="userRoleBadge" class="text-[10px] text-emerald-400 font-semibold">Sr. Architect (Engineering)</p>
+          <p id="userRoleBadge" class="text-[10px] text-brand-600 font-semibold">Sr. Architect (Engineering)</p>
         </div>
       </div>
 
@@ -176,16 +227,17 @@
       </button>
     </div>
   </header>
+  </div>
 
   <!-- Top 11 Modules Quick Navigation Strip -->
-  <div class="bg-dark-950/90 border-b border-slate-800/80 px-4 lg:px-8 py-2 overflow-x-auto no-scrollbar flex items-center gap-2 text-xs font-semibold shrink-0 no-print" id="topModuleStrip">
-    <span class="text-[10px] uppercase font-bold text-indigo-400 tracking-wider shrink-0 mr-1 flex items-center gap-1">
-      <i data-lucide="shield" class="w-3.5 h-3.5 text-indigo-400"></i> <span id="stripRoleName">EMPLOYEE PORTAL</span>:
+  <div class="bg-light border-bottom px-4 lg:px-8 py-2 overflow-x-auto no-scrollbar d-flex align-items-center gap-2 small fw-semibold shrink-0 no-print module-strip" id="topModuleStrip">
+    <span class="text-[10px] uppercase font-bold text-brand-600 tracking-wider shrink-0 mr-1 flex items-center gap-1">
+      <i data-lucide="shield" class="w-3.5 h-3.5 text-brand-600"></i> <span id="stripRoleName">EMPLOYEE PORTAL</span>:
     </span>
-    <button onclick="navigateToTab('login-portal')" id="strip-login-portal" class="strip-btn px-3.5 py-1 rounded-lg bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:brightness-110 text-white font-bold flex items-center gap-1.5 shrink-0 transition shadow-sm">
-      <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> 🔐 Login & Roles Portal
+    <button onclick="navigateToTab('login-portal')" id="strip-login-portal" class="strip-btn px-3.5 py-1 rounded-lg bg-accent-500 hover:brightness-110 text-white font-bold flex items-center gap-1.5 shrink-0 transition shadow-sm">
+      <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Login & Roles Portal
     </button>
-    <button onclick="navigateToTab('dashboard')" id="strip-dashboard" class="strip-btn px-3 py-1 rounded-lg bg-indigo-600 text-white flex items-center gap-1.5 shrink-0 transition">
+    <button onclick="navigateToTab('dashboard')" id="strip-dashboard" class="strip-btn px-3 py-1 rounded-lg bg-accent-500 text-white flex items-center gap-1.5 shrink-0 transition">
       <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Dashboard
     </button>
     <button onclick="navigateToTab('search')" id="strip-search" class="strip-btn px-3 py-1 rounded-lg bg-dark-900 text-slate-300 hover:text-white hover:bg-dark-700 border border-slate-800 flex items-center gap-1.5 shrink-0 transition">
@@ -235,15 +287,15 @@
           <span class="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
             <i data-lucide="wallet" class="w-3.5 h-3.5 text-indigo-400"></i> Travel Wallet
           </span>
-          <span id="walletCurrency" class="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300">INR</span>
+          <span id="walletCurrency" class="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-700">INR</span>
         </div>
         <div class="space-y-1.5">
           <div class="flex justify-between text-xs">
             <span class="text-slate-400">Remaining:</span>
-            <span id="walletRemaining" class="font-extrabold text-emerald-400">₹3,24,200</span>
+            <span id="walletRemaining" class="font-extrabold text-brand-700">₹3,24,200</span>
           </div>
           <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-            <div id="walletProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full" style="width: 82%"></div>
+            <div id="walletProgressBar" class="bg-gradient-to-r from-brand-600 to-accent-500 h-full rounded-full" style="width: 82%"></div>
           </div>
           <div class="flex justify-between text-[10px] text-slate-500">
             <span>Spent: <strong id="walletSpent" class="text-slate-300">₹25,800</strong></span>
@@ -261,11 +313,25 @@
   </div>
 
   <!-- Real-Time AI & Support Floating Chat Button -->
+  <div id="quickFab" class="fixed bottom-6 left-6 z-50 hidden no-print">
+    <div id="fabMenu" class="fab-menu hidden">
+      <button type="button" onclick="runFabAction('request')" class="fab-menu-item"><i data-lucide="plane-takeoff" class="w-4 h-4"></i> New Request</button>
+      <button type="button" onclick="runFabAction('search')" class="fab-menu-item"><i data-lucide="search" class="w-4 h-4"></i> Book Travel</button>
+      <button type="button" onclick="runFabAction('expense')" class="fab-menu-item"><i data-lucide="receipt" class="w-4 h-4"></i> Add Expense</button>
+      <button type="button" onclick="runFabAction('itinerary')" class="fab-menu-item"><i data-lucide="ticket" class="w-4 h-4"></i> My PNR</button>
+      <button type="button" onclick="runFabAction('chat')" class="fab-menu-item"><i data-lucide="messages-square" class="w-4 h-4"></i> Live Chat</button>
+    </div>
+    <button type="button" id="fabMainBtn" onclick="toggleFabMenu()" class="fab-main-btn" aria-label="Quick actions">
+      <i data-lucide="plus" class="w-6 h-6 fab-icon-plus"></i>
+      <i data-lucide="x" class="w-5 h-5 fab-icon-close"></i>
+    </button>
+  </div>
+
   <div class="fixed bottom-6 right-6 z-50 flex items-center gap-3 no-print">
-    <button onclick="openAiModal()" class="flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-bold text-sm shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-105 transition-all">
+    <button onclick="openAiModal()" class="flex items-center gap-2 px-4 py-3 rounded-full bg-accent-500 hover:bg-brand-700 text-white font-bold text-sm shadow-lg transition-all">
       <i data-lucide="sparkles" class="w-4 h-4 animate-pulse"></i> AI Assistant
     </button>
-    <button onclick="toggleLiveChatDrawer()" class="p-3.5 rounded-full bg-dark-800 border border-indigo-500/40 text-indigo-400 hover:text-white hover:bg-dark-700 shadow-xl transition">
+    <button onclick="toggleLiveChatDrawer()" class="p-3.5 rounded-full bg-white border border-brand-500/25 text-brand-700 hover:text-accent-500 hover:bg-brand-50 shadow-lg transition">
       <i data-lucide="messages-square" class="w-5 h-5"></i>
     </button>
   </div>
@@ -291,33 +357,116 @@
     </div>
   </div>
 
-  <!-- Support Chat Drawer -->
-  <div id="chatDrawer" class="hidden fixed bottom-24 right-6 w-96 bg-dark-800 border border-slate-700 rounded-2xl shadow-2xl z-50 flex flex-col h-[520px]">
-    <div class="p-4 bg-gradient-to-r from-indigo-900 to-slate-900 rounded-t-2xl border-b border-slate-700 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <div class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></div>
-        <div>
-          <h4 class="font-bold text-sm text-white">Live Corporate Support</h4>
-          <p class="text-[10px] text-indigo-300">Agent: James Wilson (24/7 Desk)</p>
+  <!-- WhatsApp-style Multi-Hub Chat -->
+  <div id="chatDrawer" class="hidden whatsapp-chat-drawer fixed bottom-24 right-6 w-[min(100%,720px)] bg-dark-900 border border-slate-700 rounded-2xl shadow-2xl z-50 flex flex-col h-[560px] overflow-hidden">
+    <div class="whatsapp-chat-layout flex flex-1 min-h-0">
+      <aside class="chat-hub-sidebar w-36 md:w-44 border-r border-slate-800 bg-dark-950/90 shrink-0 overflow-y-auto" id="chatHubList"></aside>
+      <div class="chat-main-panel flex flex-col flex-1 min-w-0">
+        <div class="p-3 bg-gradient-to-r from-brand-700/90 to-brand-900 border-b border-brand-500/20 flex items-center justify-between">
+          <div>
+            <h4 id="chatActiveHubTitle" class="font-bold text-sm text-white">Corporate Chat</h4>
+            <p class="text-[10px] text-brand-100">WhatsApp-style multihub • Live WebSocket</p>
+          </div>
+          <button onclick="toggleLiveChatDrawer()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+        <div class="chat-channel-tabs flex gap-1 p-2 border-b border-slate-800 bg-dark-950/50">
+          <button type="button" class="chat-channel-tab active" data-channel="SUPPORT" onclick="switchChatChannel('SUPPORT')">Support</button>
+          <button type="button" class="chat-channel-tab" data-channel="HR" onclick="switchChatChannel('HR')">HR</button>
+          <button type="button" class="chat-channel-tab" data-channel="MANAGER" onclick="switchChatChannel('MANAGER')">Manager</button>
+        </div>
+        <div id="chatMessagesBox" class="wa-chat-thread flex-1 overflow-y-auto p-3 space-y-2"></div>
+        <div class="p-3 border-t border-slate-700 flex items-center gap-2 bg-dark-900/95">
+          <input id="chatInputText" type="text" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendChatMessage()" class="flex-1 bg-white text-xs text-brand-900 border border-brand-500/20 rounded-full px-4 py-2.5 outline-none focus:border-accent-500">
+          <button onclick="sendChatMessage()" class="p-2.5 rounded-full bg-accent-500 hover:bg-brand-700 text-white transition"><i data-lucide="send" class="w-4 h-4"></i></button>
         </div>
       </div>
-      <button onclick="toggleLiveChatDrawer()" class="text-slate-400 hover:text-white">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
     </div>
-    <div id="chatMessagesBox" class="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
-      <div class="flex gap-2">
-        <div class="h-6 w-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold">CS</div>
-        <div class="bg-dark-700 p-2.5 rounded-xl rounded-tl-none max-w-[80%] text-slate-200">
-          Hello Priya! I see you have an upcoming flight AI-839 to Delhi. How can I assist with your itinerary or corporate hotel booking?
+  </div>
+
+  <!-- Mobile Bottom Navigation (reference responsive view) -->
+  <nav id="mobileBottomNav" class="mobile-bottom-nav no-print">
+    <button class="mobile-nav-btn" data-tab="dashboard" onclick="navigateToTab('dashboard')">
+      <i data-lucide="layout-dashboard" class="w-5 h-5"></i><span>Home</span>
+    </button>
+    <button class="mobile-nav-btn" data-tab="search" onclick="navigateToTab('search')">
+      <i data-lucide="search" class="w-5 h-5"></i><span>Book</span>
+    </button>
+    <button class="mobile-nav-btn" data-tab="requests" onclick="navigateToTab('requests')">
+      <i data-lucide="file-text" class="w-5 h-5"></i><span>Trips</span>
+    </button>
+    <button class="mobile-nav-btn" data-tab="itinerary" onclick="navigateToTab('itinerary')">
+      <i data-lucide="ticket" class="w-5 h-5"></i><span>PNR</span>
+    </button>
+    <button class="mobile-nav-btn" data-tab="login-portal" onclick="handleMobileProfileTap()">
+      <i data-lucide="user" class="w-5 h-5"></i><span>Profile</span>
+    </button>
+  </nav>
+
+  <!-- Mobile Profile Sheet -->
+  <div id="profileSheet" class="profile-sheet hidden no-print">
+    <div class="profile-sheet-backdrop" onclick="closeProfileSheet()"></div>
+    <div class="profile-sheet-panel">
+      <div class="profile-sheet-handle"></div>
+      <div class="flex items-center justify-between mb-2">
+        <h4 class="font-bold text-white text-sm">Traveler Profile</h4>
+        <button type="button" onclick="closeProfileSheet()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div id="profileSheetContent"></div>
+    </div>
+  </div>
+
+  <footer class="container-fluid footer py-5 wow fadeIn site-footer-pro no-print">
+    <div class="container py-2">
+      <div class="row g-5">
+        <div class="col-md-6 col-lg-3">
+          <div class="footer-item d-flex flex-column">
+            <img src="/travisa/img/brand-logo.png" alt="" style="height:42px;width:auto;" class="mb-3">
+            <h4 class="text-secondary mb-3">CorporateTravel360</h4>
+            <p class="text-white mb-0">The modern corporate travel platform for booking, policy compliance, duty of care, and expense management.</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="footer-item d-flex flex-column">
+            <h4 class="text-secondary mb-3">Product</h4>
+            <a href="#" onclick="navigateToTab('search'); return false;"><i class="fas fa-angle-right me-2"></i>Book Travel</a>
+            <a href="#" onclick="navigateToTab('requests'); return false;"><i class="fas fa-angle-right me-2"></i>Travel Requests</a>
+            <a href="#" onclick="navigateToTab('expenses'); return false;"><i class="fas fa-angle-right me-2"></i>Expenses</a>
+            <a href="#" onclick="navigateToTab('analytics'); return false;"><i class="fas fa-angle-right me-2"></i>Analytics</a>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="footer-item d-flex flex-column">
+            <h4 class="text-secondary mb-3">Company</h4>
+            <a href="#"><i class="fas fa-angle-right me-2"></i>About</a>
+            <a href="#"><i class="fas fa-angle-right me-2"></i>Customers</a>
+            <a href="#"><i class="fas fa-angle-right me-2"></i>Careers</a>
+            <a href="#"><i class="fas fa-angle-right me-2"></i>Contact</a>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="footer-item d-flex flex-column">
+            <h4 class="text-secondary mb-3">Support</h4>
+            <a href="#" onclick="toggleLiveChatDrawer(); return false;"><i class="fas fa-angle-right me-2"></i>Live Chat</a>
+            <a href="#"><i class="fas fa-angle-right me-2"></i>Help Center</a>
+            <a href="#"><i class="fas fa-angle-right me-2"></i>Travel Alerts</a>
+            <a href="/swagger-ui/index.html" target="_blank"><i class="fas fa-angle-right me-2"></i>API Docs</a>
+          </div>
         </div>
       </div>
     </div>
-    <div class="p-3 border-t border-slate-700 flex items-center gap-2">
-      <input id="chatInputText" type="text" placeholder="Type message..." onkeydown="if(event.key==='Enter') sendChatMessage()" class="flex-1 bg-dark-900 text-xs text-white border border-slate-700 rounded-xl px-3 py-2 outline-none focus:border-indigo-500">
-      <button onclick="sendChatMessage()" class="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition">
-        <i data-lucide="send" class="w-4 h-4"></i>
-      </button>
+  </footer>
+  <div class="container-fluid copyright py-3 no-print">
+    <div class="container">
+      <div class="row g-2 align-items-center">
+        <div class="col-md-6 text-center text-md-start">
+          <span class="text-white">© 2026 CorporateTravel360. All rights reserved.</span>
+        </div>
+        <div class="col-md-6 text-center text-md-end text-white">
+          <a href="#" class="text-white text-decoration-none me-3">Privacy</a>
+          <a href="#" class="text-white text-decoration-none me-3">Terms</a>
+          <a href="#" class="text-white text-decoration-none">Security</a>
+        </div>
+      </div>
     </div>
   </div>
 

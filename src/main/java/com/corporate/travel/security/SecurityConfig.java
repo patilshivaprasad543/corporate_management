@@ -50,6 +50,7 @@ public class SecurityConfig {
                     "/index.html",
                     "/app.js",
                     "/styles.css",
+                    "/travisa/**",
                     "/favicon.ico",
                     "/static/**",
                     "/assets/**",
@@ -57,13 +58,16 @@ public class SecurityConfig {
                     "/swagger-ui.html",
                     "/api-docs/**",
                     "/api/auth/**",
-                    "/actuator/health"
+                    "/actuator/health",
+                    "/ws/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/search/**").permitAll()
                 .requestMatchers("/api/approvals/**").hasAnyAuthority("ROLE_APPROVER", "ROLE_FINANCE", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN")
                 .requestMatchers("/api/expenses/*/approve", "/api/expenses/*/reject").hasAnyAuthority("ROLE_APPROVER", "ROLE_FINANCE", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN")
                 .requestMatchers("/api/admin/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN", "ROLE_HR")
-                .requestMatchers("/api/analytics/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN", "ROLE_APPROVER", "ROLE_FINANCE", "ROLE_TRAVEL_MANAGER", "ROLE_EMPLOYEE", "ROLE_FINANCE_APPROVER", "ROLE_DEPARTMENT_HEAD", "ROLE_AUDITOR")
+                .requestMatchers("/api/analytics/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN", "ROLE_APPROVER", "ROLE_FINANCE", "ROLE_TRAVEL_MANAGER", "ROLE_EMPLOYEE", "ROLE_HR", "ROLE_FINANCE_APPROVER", "ROLE_DEPARTMENT_HEAD", "ROLE_AUDITOR")
+                .requestMatchers("/api/finance/**").hasAnyAuthority("ROLE_FINANCE", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN")
+                .requestMatchers("/api/support/**").hasAnyAuthority("ROLE_SUPPORT", "ROLE_TRAVEL_MANAGER", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN")
                 .requestMatchers("/api/audit/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN", "ROLE_FINANCE")
                 .requestMatchers("/api/risk/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_ADMIN", "ROLE_TRAVEL_MANAGER", "ROLE_APPROVER", "ROLE_EMPLOYEE")
                 .anyRequest().authenticated()

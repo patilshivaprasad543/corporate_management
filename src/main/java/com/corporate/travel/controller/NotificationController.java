@@ -33,4 +33,20 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.ok(notificationService.getMyNotifications(userId), "Notifications retrieved"));
     }
 
+    @org.springframework.web.bind.annotation.PostMapping("/{id}/read")
+    @Operation(summary = "Mark one notification as read")
+    public ResponseEntity<ApiResponse<Notification>> markRead(
+            @org.springframework.web.bind.annotation.PathVariable("id") Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        Long userId = AuthenticatedUser.requireId(principal);
+        return ResponseEntity.ok(ApiResponse.ok(notificationService.markAsRead(id, userId), "Notification updated"));
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/read-all")
+    @Operation(summary = "Mark all notifications as read")
+    public ResponseEntity<ApiResponse<Integer>> markAllRead(@AuthenticationPrincipal UserPrincipal principal) {
+        Long userId = AuthenticatedUser.requireId(principal);
+        return ResponseEntity.ok(ApiResponse.ok(notificationService.markAllRead(userId), "All notifications marked read"));
+    }
+
 }

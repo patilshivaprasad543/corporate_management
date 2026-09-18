@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.corporate.travel.dto.ExpenseDto;
+import com.corporate.travel.dto.WorkflowDto;
 import com.corporate.travel.entity.*;
 import com.corporate.travel.entity.enums.ExpenseCategory;
 import com.corporate.travel.entity.enums.ExpenseStatus;
@@ -23,13 +24,14 @@ import java.util.stream.Collectors;
 public class ExpenseService {
     private static final Logger log = LoggerFactory.getLogger(ExpenseService.class);
 
-    public ExpenseService(ExpenseReportRepository expenseReportRepository, UserRepository userRepository, TravelRequestRepository travelRequestRepository, TravelWalletRepository walletRepository, NotificationService notificationService, AuditService auditService) {
+    public ExpenseService(ExpenseReportRepository expenseReportRepository, UserRepository userRepository, TravelRequestRepository travelRequestRepository, TravelWalletRepository walletRepository, NotificationService notificationService, AuditService auditService, com.corporate.travel.ai.AIExpenseFraudService aiExpenseFraudService) {
         this.expenseReportRepository = expenseReportRepository;
         this.userRepository = userRepository;
         this.travelRequestRepository = travelRequestRepository;
         this.walletRepository = walletRepository;
         this.notificationService = notificationService;
         this.auditService = auditService;
+        this.aiExpenseFraudService = aiExpenseFraudService;
     }
 
 
@@ -39,6 +41,7 @@ public class ExpenseService {
     private final TravelWalletRepository walletRepository;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    private final com.corporate.travel.ai.AIExpenseFraudService aiExpenseFraudService;
 
     @Transactional
     public ExpenseDto.ReportResponse createExpenseReport(Long userId, ExpenseDto.CreateReportRequest dto) {
@@ -95,6 +98,13 @@ public class ExpenseService {
                         .policyFlagReason(flagReason)
                         .duplicateSuspect(false)
                         .build();
+                List<String> fraudFlags = aiExpenseFraudService.inspectExpense(item);
+                if (!fraudFlags.isEmpty()) {
+                    hasAiFlags = true;
+                    aiNotes.addAll(fraudFlags);
+                    item.setPolicyCompliant(false);
+                    item.setPolicyFlagReason(String.join("; ", fraudFlags));
+                }
                 report.getItems().add(item);
             }
         }
@@ -174,6 +184,56 @@ public class ExpenseService {
         return expenseReportRepository.findAll().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<WorkflowDto.PendingFundRelease> getPendingFundReleases() {
+        return expenseReportRepository.findAll().stream()
+                .filter(r -> r.getStatus() == ExpenseStatus.SUBMITTED
+                        || r.getStatus() == ExpenseStatus.FINANCE_REVIEW
+                        || r.getStatus() == ExpenseStatus.APPROVED
+                        || r.getStatus() == ExpenseStatus.MANAGER_REVIEW)
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(r -> new WorkflowDto.PendingFundRelease(
+                        r.getId(),
+                        r.getReportNumber(),
+                        r.getEmployee() != null ? r.getEmployee().getFullName() : "Employee",
+                        r.getTitle(),
+                        r.getTotalAmount(),
+                        r.getCreatedAt(),
+                        r.getStatus().name()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ExpenseDto.ReportResponse releaseFund(Long reportId, Long financeUserId) {
+        ExpenseReport report = expenseReportRepository.findById(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("ExpenseReport", "id", reportId));
+
+        if (report.getStatus() == ExpenseStatus.REIMBURSED) {
+            return mapToResponse(report);
+        }
+
+        report.setStatus(ExpenseStatus.REIMBURSED);
+        report.setApprovedAmount(report.getTotalAmount());
+
+        walletRepository.findByUserId(report.getEmployee().getId()).ifPresent(w -> {
+            w.setPendingExpenses(w.getPendingExpenses().subtract(report.getTotalAmount()));
+            w.setReimbursedAmount(w.getReimbursedAmount().add(report.getTotalAmount()));
+            walletRepository.save(w);
+        });
+
+        notificationService.sendNotification(report.getEmployee().getId(), "Fund Released",
+                "Finance released ₹" + report.getTotalAmount() + " for expense report " + report.getReportNumber() + ".",
+                NotificationType.EXPENSE_APPROVED, "/expenses");
+
+        auditService.logAction(
+                userRepository.findById(financeUserId).map(User::getEmail).orElse("finance@acmetech.com"),
+                "RELEASE_FUND", "ExpenseReport", report.getId(),
+                "Released fund reimbursement for " + report.getReportNumber(), null);
+
+        return mapToResponse(expenseReportRepository.save(report));
     }
 
     public ExpenseDto.ReportResponse mapToResponse(ExpenseReport r) {
