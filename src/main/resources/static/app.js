@@ -106,7 +106,7 @@ const DEMO_USERS = {
 
 // All 11 platform modules + Dedicated Login Portal
 const ALL_MODULES = [
-  { id: 'login-portal', label: '🔐 Login & Role Portal', icon: 'shield-check', desc: 'Enterprise Identity Gateway: 1-click persona switching (9 roles), JWT auth, and permissions matrix.' },
+  { id: 'login-portal', label: 'Sign in', icon: 'shield-check', desc: 'Sign in to your workspace or explore demo profiles for each team.' },
   { id: 'dashboard', label: 'Dashboard & Overview', icon: 'layout-dashboard', desc: 'Central KPI metrics, upcoming trips, and corporate spend status.' },
   { id: 'search', label: 'Book Travel (GDS Search)', icon: 'search', desc: 'Search flights, hotels & ground transportation with negotiated corporate tariffs.' },
   { id: 'requests', label: 'Travel Requests', icon: 'file-text', desc: 'Submit business travel proposals with automated policy compliance evaluation.' },
@@ -263,8 +263,8 @@ function renderPortalHero(roleKey, compact = false) {
           </div>
           <div>
             <div class="flex flex-wrap items-center gap-2 mb-1">
-              <span class="text-[10px] uppercase tracking-[0.2em] font-bold text-white/70">${theme.shortName} Workspace</span>
-              <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/15 text-white font-bold border border-white/20">RBAC Active</span>
+              <span class="text-[10px] uppercase tracking-[0.2em] font-bold text-white/70">${theme.shortName} Portal</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/15 text-white font-bold border border-white/20">Verified</span>
             </div>
             <h2 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">${theme.portalName}</h2>
             <p class="text-sm text-white/80 mt-1 max-w-2xl">${theme.tagline}</p>
@@ -273,7 +273,7 @@ function renderPortalHero(roleKey, compact = false) {
         </div>
         <div class="flex flex-wrap gap-2 shrink-0">
           <span class="px-3 py-1.5 rounded-xl bg-black/20 border border-white/15 text-xs font-bold text-white">${roleKey.replace('ROLE_', '').replace('_', ' ')}</span>
-          <span class="px-3 py-1.5 rounded-xl bg-white/10 border border-white/15 text-xs font-semibold text-white/90">${(ROLE_NAVS[roleKey] || []).length - 1} modules unlocked</span>
+          <span class="px-3 py-1.5 rounded-xl bg-white/10 border border-white/15 text-xs font-semibold text-white/90">${(ROLE_NAVS[roleKey] || []).length - 1} tools available</span>
         </div>
       </div>
     </div>
@@ -466,6 +466,10 @@ function updateNotificationBadge() {
 
 function initSplashScreen() {
   const splash = document.getElementById('splashScreen');
+  const splashBg = document.getElementById('splashPhotoBg');
+  if (splashBg) splashBg.style.backgroundImage = `url('${WORKFLOW_IMAGES.splash}')`;
+  const logo = document.getElementById('siteLogoImg');
+  if (logo) logo.src = WORKFLOW_IMAGES.orgLogo;
   if (!splash) return;
   if (STATE.splashDismissed) {
     splash.classList.add('splash-hidden');
@@ -1012,12 +1016,77 @@ function updateWalletDisplay() {
 // =========================================================================
 // 0. DEDICATED LOGIN & IDENTITY GATEWAY MODULE
 // =========================================================================
+function renderMarketingHomepage() {
+  if (STATE.isAuthenticated) return '';
+  return `
+    <section class="site-marketing-hero mb-8">
+      <div class="site-marketing-hero-bg" style="background-image: url('${WORKFLOW_IMAGES.city}')"></div>
+      <div class="site-marketing-hero-content">
+        <span class="site-eyebrow">Corporate travel management</span>
+        <h1 class="site-marketing-title">Travel smarter.<br>Spend less.<br>Stay compliant.</h1>
+        <p class="site-marketing-lead">Everything your team needs to book corporate travel, get approvals, manage itineraries, and reconcile expenses — in one beautiful platform.</p>
+        <div class="flex flex-wrap gap-3 mt-6">
+          <button onclick="document.getElementById('portalLoginUsername')?.focus(); window.scrollTo({top: 600, behavior: 'smooth'})" class="site-btn-primary">Sign in to your account</button>
+          <button onclick="loginAsRole('ROLE_EMPLOYEE'); navigateToTab('dashboard');" class="site-btn-secondary">View employee demo</button>
+        </div>
+        <div class="site-trust-row mt-8">
+          <span><i data-lucide="shield-check" class="w-4 h-4 inline"></i> SOC 2 Type II</span>
+          <span><i data-lucide="globe" class="w-4 h-4 inline"></i> 120+ countries</span>
+          <span><i data-lucide="users" class="w-4 h-4 inline"></i> 2.4M travelers</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="site-stats-grid mb-8">
+      <div class="site-stat-card popout-3d"><strong>18%</strong><span>Average savings vs public fares</span></div>
+      <div class="site-stat-card popout-3d"><strong>4.2 hrs</strong><span>Saved per trip on approvals</span></div>
+      <div class="site-stat-card popout-3d"><strong>99.9%</strong><span>Platform uptime SLA</span></div>
+      <div class="site-stat-card popout-3d"><strong>24/7</strong><span>Global traveler support</span></div>
+    </section>
+
+    <section class="site-features-grid mb-8">
+      <div class="site-feature-card popout-3d">
+        <div class="site-feature-icon"><i data-lucide="plane" class="w-5 h-5"></i></div>
+        <h3>Book & manage trips</h3>
+        <p>Search negotiated corporate rates for flights, hotels, and ground transport with instant PNR issuance.</p>
+      </div>
+      <div class="site-feature-card popout-3d">
+        <div class="site-feature-icon"><i data-lucide="check-square" class="w-5 h-5"></i></div>
+        <h3>Policy & approvals</h3>
+        <p>Multi-tier approval workflows with automatic policy checks before every booking.</p>
+      </div>
+      <div class="site-feature-card popout-3d">
+        <div class="site-feature-icon"><i data-lucide="receipt" class="w-5 h-5"></i></div>
+        <h3>Expenses & OCR</h3>
+        <p>Scan receipts, submit claims, and get reimbursed with AI-powered fraud detection.</p>
+      </div>
+      <div class="site-feature-card popout-3d">
+        <div class="site-feature-icon"><i data-lucide="shield-alert" class="w-5 h-5"></i></div>
+        <h3>Duty of care</h3>
+        <p>Live risk alerts, traveler tracking, and emergency SOS for your global workforce.</p>
+      </div>
+    </section>
+
+    <section class="site-testimonial mb-8 popout-3d">
+      <div class="site-testimonial-photo" style="background-image: url('${WORKFLOW_IMAGES.dashboardTrip}')"></div>
+      <div class="site-testimonial-body">
+        <p>"CorporateTravel360 cut our travel spend by 22% in the first quarter while giving finance full visibility into every trip."</p>
+        <div class="mt-4">
+          <strong class="text-white">Sarah Connor</strong>
+          <span class="block text-xs text-slate-400">VP Operations, Acme Global Technologies</span>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function loadLoginPortalTab() {
   const main = document.getElementById('mainContent');
   const activeTheme = getRoleTheme(STATE.currentRole || 'ROLE_EMPLOYEE');
   
   main.innerHTML = `
-    ${renderPortalHero(STATE.currentRole || 'ROLE_EMPLOYEE')}
+    ${renderMarketingHomepage()}
+    ${STATE.isAuthenticated ? renderPortalHero(STATE.currentRole || 'ROLE_EMPLOYEE') : ''}
 
     <!-- Dedicated Login & Role Gateway Header -->
     <div class="glass-panel p-6 rounded-3xl border ${activeTheme.border} relative overflow-hidden mb-6 portal-card-animate">
@@ -1029,18 +1098,18 @@ function loadLoginPortalTab() {
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h1 class="text-2xl font-extrabold text-white tracking-tight">Enterprise Login & Identity Gateway</h1>
-              <span class="text-xs px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1">
-                <span class="h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span> AUTH READY
-              </span>
+              <h1 class="text-2xl font-extrabold text-white tracking-tight">${STATE.isAuthenticated ? 'Account & Portal Access' : 'Sign in to your workspace'}</h1>
+              ${STATE.isAuthenticated ? `<span class="text-xs px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1">
+                <span class="h-2 w-2 rounded-full bg-emerald-400"></span> Signed in
+              </span>` : ''}
             </div>
-            <p class="text-xs text-slate-400 mt-1">Switch personas across 9 corporate roles, verify JWT security tokens, and launch any platform module directly.</p>
+            <p class="text-xs text-slate-400 mt-1">${STATE.isAuthenticated ? 'Switch roles or open modules available to your profile.' : 'Use your corporate email or select a demo role to explore the platform.'}</p>
           </div>
         </div>
 
         <div class="flex items-center gap-3">
           <div class="p-3 rounded-2xl bg-dark-900 border border-slate-800 text-right">
-            <span class="text-[10px] text-slate-400 block font-semibold">Current Active Persona</span>
+            <span class="text-[10px] text-slate-400 block font-semibold">Signed in as</span>
             <div class="text-xs font-bold text-white flex items-center gap-1.5 justify-end">
               <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
               <span>${STATE.currentUser.name}</span>
@@ -1065,22 +1134,22 @@ function loadLoginPortalTab() {
           <strong class="text-emerald-400">${formatMoney(STATE.currentUser.wallet ? STATE.currentUser.wallet.remaining : 324200)}</strong>
         </div>
         <div class="p-2.5 rounded-xl bg-dark-900/80 border border-slate-800/80">
-          <span class="text-[10px] text-slate-500 block">JWT Token Status</span>
-          <strong class="text-indigo-300 font-mono">HMAC-SHA256 (Active)</strong>
+          <span class="text-[10px] text-slate-500 block">Session</span>
+          <strong class="text-indigo-300 font-mono">${STATE.isAuthenticated ? 'Active' : 'Guest'}</strong>
         </div>
       </div>
     </div>
 
-    <!-- Section 1: 1-Click Role Persona Grid -->
+    <!-- Workspace selection -->
     <div class="space-y-4 mb-8">
       <div class="flex items-center justify-between">
         <div>
           <h3 class="text-base font-extrabold text-white flex items-center gap-2">
-            <i data-lucide="users" class="w-5 h-5 text-indigo-400"></i> Select Role for Instant 1-Click Login
+            <i data-lucide="users" class="w-5 h-5 text-indigo-400"></i> Choose your workspace
           </h3>
-          <p class="text-xs text-slate-400">Click any card below to instantly adopt the persona, issue a live JWT session, and adapt user permissions.</p>
+          <p class="text-xs text-slate-400">Select a demo profile to explore how CorporateTravel360 works for each team — employee, manager, finance, and more.</p>
         </div>
-        <span class="text-xs text-slate-500 font-semibold font-mono">9 Available Roles</span>
+        <span class="text-xs text-slate-500 font-semibold">9 team profiles</span>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1150,31 +1219,30 @@ function loadLoginPortalTab() {
       <div class="lg:col-span-2 glass-panel login-photo-panel rounded-2xl border border-slate-800 relative overflow-hidden">
         <div class="login-photo-bg" style="background-image: url('${WORKFLOW_IMAGES.login}')"></div>
         <div class="relative z-10 p-6">
-        <div class="flex items-center gap-2 text-indigo-400 mb-1 font-bold text-xs">
-          <i data-lucide="key" class="w-4 h-4"></i> CUSTOM CREDENTIAL AUTHENTICATION
+        <div class="flex items-center gap-2 text-brand-300 mb-1 font-bold text-xs">
+          <i data-lucide="key" class="w-4 h-4"></i> Sign in
         </div>
-        <h3 class="text-base font-extrabold text-white mb-2">Sign In with Corporate Email & Password</h3>
-        <p class="text-xs text-slate-400 mb-4">Authenticates directly against backend Spring Boot <code>POST /api/auth/login</code> REST API with JWT generation.</p>
+          <h3 class="text-base font-extrabold text-white mb-2">Sign in with your work email</h3>
+          <p class="text-xs text-slate-400 mb-4">Access your company's travel portal with SSO or email credentials.</p>
 
         <form onsubmit="handlePortalCredentialLogin(event)" class="space-y-4 text-xs">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="text-slate-300 font-semibold block mb-1.5">Username or Corporate Email *</label>
-              <input type="text" id="portalLoginUsername" required value="traveler@acmetech.com" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500 font-medium">
+              <label class="text-slate-300 font-semibold block mb-1.5">Work email</label>
+              <input type="text" id="portalLoginUsername" required value="traveler@acmetech.com" placeholder="you@company.com" class="site-input w-full">
             </div>
             <div>
-              <label class="text-slate-300 font-semibold block mb-1.5">Password *</label>
-              <input type="password" id="portalLoginPassword" required value="password123" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500 font-medium">
+              <label class="text-slate-300 font-semibold block mb-1.5">Password</label>
+              <input type="password" id="portalLoginPassword" required value="password123" placeholder="••••••••" class="site-input w-full">
             </div>
           </div>
 
           <div class="flex items-center justify-between pt-2">
-            <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
-              <i data-lucide="lock" class="w-3.5 h-3.5 text-emerald-400"></i>
-              <span>BCrypt Salted Hashes & Stateless JWT</span>
-            </div>
-            <button type="submit" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center gap-2">
-              <i data-lucide="log-in" class="w-4 h-4"></i> Authenticate & Generate Token
+            <label class="text-[11px] text-slate-400 flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked class="accent-brand-500"> Remember me
+            </label>
+            <button type="submit" class="site-btn-primary px-6 py-2.5 text-xs">
+              Sign in
             </button>
           </div>
         </form>
@@ -1184,19 +1252,19 @@ function loadLoginPortalTab() {
       <!-- Quick Session Stats -->
       <div class="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
         <div>
-          <div class="flex items-center gap-2 text-indigo-400 mb-1 font-bold text-xs">
-            <i data-lucide="shield" class="w-4 h-4"></i> SECURITY STATUS
+          <div class="flex items-center gap-2 text-brand-300 mb-1 font-bold text-xs">
+            <i data-lucide="shield" class="w-4 h-4"></i> Your profile
           </div>
-          <h4 class="text-sm font-extrabold text-white">Active Session Profile</h4>
+          <h4 class="text-sm font-extrabold text-white">Session overview</h4>
           
           <div class="space-y-3 mt-4 text-xs">
             <div class="flex justify-between py-1.5 border-b border-slate-800">
-              <span class="text-slate-400">Principal:</span>
+              <span class="text-slate-400">Name</span>
               <strong class="text-white">${STATE.currentUser.name}</strong>
             </div>
             <div class="flex justify-between py-1.5 border-b border-slate-800">
-              <span class="text-slate-400">Role Authority:</span>
-              <strong class="text-indigo-400">${STATE.currentRole}</strong>
+              <span class="text-slate-400">Role</span>
+              <strong class="text-indigo-400">${STATE.currentRole || 'Guest'}</strong>
             </div>
             <div class="flex justify-between py-1.5 border-b border-slate-800">
               <span class="text-slate-400">Cost Center:</span>
@@ -1210,21 +1278,27 @@ function loadLoginPortalTab() {
         </div>
 
         <button onclick="navigateToTab('audit')" class="w-full mt-4 py-2 rounded-xl bg-dark-900 hover:bg-dark-700 border border-slate-700 text-indigo-300 hover:text-white font-bold text-xs transition flex items-center justify-center gap-1.5">
-          <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Inspect Security Audit Trail ➔
+          <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> View activity log
         </button>
       </div>
     </div>
 
-    <!-- Workflow Reference Overview -->
-    <div class="glass-panel p-6 rounded-3xl border border-indigo-500/30 mb-8 overflow-hidden">
-      <div class="flex flex-col xl:flex-row gap-6 items-center">
+    <!-- Platform overview -->
+    <div class="site-platform-overview glass-panel p-6 mb-8 overflow-hidden">
+      <div class="flex flex-col xl:flex-row gap-6 items-start xl:items-center">
         <div class="flex-1">
           <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
-            <i data-lucide="layout-grid" class="w-5 h-5 text-indigo-400"></i> Complete Reference Workflow
+            <i data-lucide="route" class="w-5 h-5 text-brand-300"></i> End-to-end travel lifecycle
           </h3>
-          <p class="text-xs text-slate-400 mt-2">Splash → Portal Selection → Login → Role Dashboards → Travel Request → Approvals → HR Budget → Finance Release → Support Desk → Chat & Notifications.</p>
+          <p class="text-xs text-slate-400 mt-2">From booking and approvals to expenses and duty-of-care — one connected platform for travelers, managers, and finance teams.</p>
+          <div class="site-platform-steps">
+            <div class="site-platform-step"><strong>Book</strong>Search corporate rates</div>
+            <div class="site-platform-step"><strong>Approve</strong>Policy-aware workflows</div>
+            <div class="site-platform-step"><strong>Travel</strong>Itinerary & boarding pass</div>
+            <div class="site-platform-step"><strong>Reconcile</strong>Expenses & reports</div>
+          </div>
         </div>
-        <img src="${WORKFLOW_IMAGES.workflowReference}" alt="CorporateTravel workflow reference" class="workflow-reference-image rounded-2xl border border-slate-700 shadow-2xl">
+        <img src="${WORKFLOW_IMAGES.workflowReference}" alt="Corporate travel platform overview" class="workflow-reference-image rounded-2xl border border-slate-700 shadow-2xl max-w-md w-full">
       </div>
     </div>
 
@@ -1240,12 +1314,12 @@ function loadLoginPortalTab() {
           <div class="flex items-center justify-between mb-4">
             <div>
               <h3 class="text-base font-extrabold text-white flex items-center gap-2">
-                <i data-lucide="shield-check" class="w-5 h-5 text-emerald-400"></i> Authorized Modules for ${roleDisplayName} Portal (${authorizedModules.length} Available)
+                <i data-lucide="shield-check" class="w-5 h-5 text-emerald-400"></i> Your modules (${authorizedModules.length})
               </h3>
-              <p class="text-xs text-slate-400">Showing only modules accessible to <strong>${STATE.currentUser.name}</strong> (${STATE.currentUser.designation}).</p>
+              <p class="text-xs text-slate-400">Tools available to <strong>${STATE.currentUser.name}</strong> in the ${roleDisplayName} workspace.</p>
             </div>
             <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              Role RBAC Enforced
+              Access verified
             </span>
           </div>
 
@@ -3073,16 +3147,16 @@ function loadAiAssistantTab() {
       </div>
     </div>
 
-    <!-- Workflow Reference Overview -->
-    <div class="glass-panel p-6 rounded-3xl border border-indigo-500/30 mb-8 overflow-hidden">
-      <div class="flex flex-col lg:flex-row gap-6 items-center">
+    <!-- Platform overview -->
+    <div class="site-platform-overview glass-panel p-6 mb-8 overflow-hidden">
+      <div class="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
         <div class="flex-1">
           <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
-            <i data-lucide="layout-grid" class="w-5 h-5 text-indigo-400"></i> Complete Reference Workflow
+            <i data-lucide="route" class="w-5 h-5 text-brand-300"></i> End-to-end travel lifecycle
           </h3>
-          <p class="text-xs text-slate-400 mt-2">Splash → Portal Selection → Login → Role Dashboards → Travel Request → Approvals → HR Budget → Finance Release → Support Desk → Chat & Notifications.</p>
+          <p class="text-xs text-slate-400 mt-2">Book, approve, travel, and reconcile — all in one platform built for global teams.</p>
         </div>
-        <img src="${WORKFLOW_IMAGES.workflowReference}" alt="CorporateTravel workflow reference" class="workflow-reference-image rounded-2xl border border-slate-700 shadow-2xl">
+        <img src="${WORKFLOW_IMAGES.workflowReference}" alt="Corporate travel platform overview" class="workflow-reference-image rounded-2xl border border-slate-700 shadow-2xl max-w-sm w-full">
       </div>
     </div>
   `;

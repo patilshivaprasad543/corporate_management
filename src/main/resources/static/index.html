@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Corporate Business Travel & Expense Platform</title>
+  <meta name="description" content="CorporateTravel360 — enterprise business travel, booking, approvals, and expense management for global teams.">
+  <title>CorporateTravel360 | Business Travel & Expense Management</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -68,16 +69,16 @@
 
   <!-- Reference Workflow Splash Screen -->
   <div id="splashScreen" class="splash-screen">
-    <div class="splash-photo-bg" style="background-image: url('https://images.unsplash.com/photo-1436491865331-9a61a109fc08?w=1920&auto=format&fit=crop&q=80')"></div>
+    <div id="splashPhotoBg" class="splash-photo-bg"></div>
     <div class="splash-scene">
       <div class="splash-plane">
         <i data-lucide="plane" class="w-16 h-16 text-brand-300"></i>
       </div>
     </div>
     <div class="splash-content glass-panel-3d">
-      <span class="splash-badge">CorporateTravel360</span>
-      <h1 class="splash-title">Your Journey<br><span class="text-brand-300">Our Priority</span></h1>
-      <p class="splash-subtitle">Enterprise travel management across 9 role-based portals — from request to reimbursement.</p>
+      <span class="splash-badge">Trusted by 2,400+ enterprises</span>
+      <h1 class="splash-title">Business travel,<br><span class="text-brand-300">simplified.</span></h1>
+      <p class="splash-subtitle">Book flights, manage approvals, track expenses, and keep travelers safe — one platform for your entire organization.</p>
       <div class="splash-actions">
         <button onclick="dismissSplash(true)" class="splash-btn-primary">
           <i data-lucide="rocket" class="w-4 h-4"></i> Get Started
@@ -92,19 +93,19 @@
     </div>
   </div>
 
-  <!-- Top Announcement / Live Flight Alert Banner -->
-  <div id="topAlertBanner" class="bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 px-4 py-2 text-xs font-medium text-indigo-200 border-b border-indigo-500/20 flex items-center justify-between no-print">
+  <!-- System status bar -->
+  <div id="topAlertBanner" class="site-status-bar px-4 py-2 text-xs font-medium flex items-center justify-between no-print">
     <div class="flex items-center gap-2">
       <span class="flex h-2 w-2 relative">
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
         <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
       </span>
-      <span><strong>DEMO ENVIRONMENT:</strong> Search results and travel advisories use test-provider data unless a live provider is configured.</span>
+      <span>All systems operational</span>
+      <span class="hidden sm:inline text-slate-500">•</span>
+      <span class="hidden sm:inline">24/7 global travel support</span>
     </div>
-    <div class="flex items-center gap-4">
-      <a href="/swagger-ui/index.html" target="_blank" class="hover:text-white flex items-center gap-1 underline underline-offset-2">
-        <i data-lucide="file-code-2" class="w-3.5 h-3.5"></i> Swagger API Docs
-      </a>
+    <div class="flex items-center gap-4 text-slate-400">
+      <span class="hidden md:inline">ISO 27001 • SOC 2</span>
+      <a href="/swagger-ui/index.html" target="_blank" class="hover:text-white transition">Developers</a>
     </div>
   </div>
 
@@ -112,24 +113,26 @@
   <header class="bg-dark-800/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-4 lg:px-8 py-3 flex items-center justify-between no-print">
     <!-- Brand Logo -->
     <div class="flex items-center gap-3">
-      <div class="h-10 w-10 rounded-xl overflow-hidden border border-brand-500/30 shadow-lg shadow-indigo-500/30 shrink-0">
-        <img src="https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=200&auto=format&fit=crop&q=80" alt="AeroCorp Travel" class="h-full w-full object-cover">
+      <div class="site-logo-mark shrink-0">
+        <img id="siteLogoImg" src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200&auto=format&fit=crop&q=85" alt="CorporateTravel360" class="h-full w-full object-cover">
       </div>
       <div>
         <div class="flex items-center gap-2">
-          <span class="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-indigo-300">
-            AeroCorp Travel
-          </span>
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-semibold border border-brand-500/30">
-            ENTERPRISE SaaS
-          </span>
+          <span class="site-brand-name">CorporateTravel360</span>
         </div>
-        <p class="text-[11px] text-slate-400 font-medium">Acme Global Technologies Inc.</p>
+        <p class="text-[11px] text-slate-400 font-medium">Business Travel Platform</p>
       </div>
     </div>
 
+    <nav class="site-header-nav" aria-label="Primary">
+      <a href="#" onclick="navigateToTab('login-portal'); return false;">Product</a>
+      <a href="#" onclick="navigateToTab('search'); return false;">Book Travel</a>
+      <a href="#" onclick="navigateToTab('analytics'); return false;">Analytics</a>
+      <a href="#" onclick="toggleLiveChatDrawer(); return false;">Support</a>
+    </nav>
+
     <!-- Center Mode Switch & Interactive Flow Stepper Controller -->
-    <div class="hidden md:flex items-center gap-2">
+    <div class="hidden md:flex items-center gap-2 dev-toolbar">
       <!-- Guided Flow Controller -->
       <div class="flex items-center bg-dark-900/90 p-1 rounded-xl border border-indigo-500/40 shadow-md">
         <button onclick="autoPlayFlow()" id="btnAutoPlayFlow" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white hover:brightness-110 shadow-sm">
@@ -161,12 +164,10 @@
         <option value="GBP">£ GBP</option>
       </select>
 
-      <!-- Role Switcher (9 Roles) -->
-      <div class="flex items-center gap-1.5 bg-dark-900 border border-indigo-500/40 px-2 py-1 rounded-xl">
-        <span class="text-[11px] font-semibold text-indigo-300 flex items-center gap-1">
-          <i data-lucide="shield" class="w-3.5 h-3.5 text-indigo-400"></i> Role:
-        </span>
-        <select id="roleSelector" onchange="switchDemoRole(this.value)" class="bg-transparent text-xs font-bold text-white border-0 focus:ring-0 outline-none cursor-pointer">
+      <!-- Workspace switcher (demo) -->
+      <div class="site-workspace-select hidden sm:flex">
+        <span>View as</span>
+        <select id="roleSelector" onchange="switchDemoRole(this.value)" aria-label="Switch workspace view">
           <option value="ROLE_EMPLOYEE" class="bg-dark-800">Employee / Traveler</option>
           <option value="ROLE_APPROVER" class="bg-dark-800">Approver / Line Manager</option>
           <option value="ROLE_TRAVEL_MANAGER" class="bg-dark-800">Travel Manager</option>
@@ -179,10 +180,10 @@
         </select>
       </div>
 
-      <!-- Login Portal / Switch Account Button -->
-      <button onclick="openLoginPortalModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:brightness-110 text-white font-bold text-xs shadow-md transition" title="Open Enterprise Login & Role Switcher">
+      <!-- Sign in -->
+      <button onclick="openLoginPortalModal()" class="site-btn-primary !py-1.5 !px-3 !text-xs !shadow-md" title="Sign in to your workspace">
         <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
-        <span>Login Portal</span>
+        <span>Sign in</span>
       </button>
 
       <!-- All Modules Modal Button -->
@@ -402,11 +403,38 @@
     </div>
   </div>
 
-  <footer class="app-footer no-print">
-    <div class="app-footer-inner">
-      <span>CorporateTravel360 • Enterprise SaaS</span>
-      <span>Acme Global Technologies Inc.</span>
-      <a href="/swagger-ui/index.html" target="_blank" class="hover:text-brand-300">API Docs</a>
+  <footer class="site-footer-pro no-print">
+    <div class="site-footer-grid">
+      <div class="site-footer-brand">
+        <div class="site-logo-mark sm"><img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200&auto=format&fit=crop&q=85" alt="" class="h-full w-full object-cover"></div>
+        <p class="site-brand-name text-base mt-3">CorporateTravel360</p>
+        <p class="text-xs text-slate-400 mt-2 max-w-xs">The modern corporate travel platform for booking, policy compliance, duty of care, and expense management.</p>
+      </div>
+      <div>
+        <h5>Product</h5>
+        <a href="#" onclick="navigateToTab('search'); return false;">Book Travel</a>
+        <a href="#" onclick="navigateToTab('requests'); return false;">Travel Requests</a>
+        <a href="#" onclick="navigateToTab('expenses'); return false;">Expenses</a>
+        <a href="#" onclick="navigateToTab('analytics'); return false;">Analytics</a>
+      </div>
+      <div>
+        <h5>Company</h5>
+        <a href="#">About</a>
+        <a href="#">Customers</a>
+        <a href="#">Careers</a>
+        <a href="#">Contact</a>
+      </div>
+      <div>
+        <h5>Support</h5>
+        <a href="#" onclick="toggleLiveChatDrawer(); return false;">Live Chat</a>
+        <a href="#">Help Center</a>
+        <a href="#">Travel Alerts</a>
+        <a href="/swagger-ui/index.html" target="_blank">API Docs</a>
+      </div>
+    </div>
+    <div class="site-footer-bottom">
+      <span>© 2026 CorporateTravel360. All rights reserved.</span>
+      <span class="flex gap-4"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Security</a></span>
     </div>
   </footer>
 
