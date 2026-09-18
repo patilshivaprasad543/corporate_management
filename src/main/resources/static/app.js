@@ -22,7 +22,10 @@ const STATE = {
   bookings: [],
   expenses: [],
   riskAlerts: [],
-  auditLogs: []
+  auditLogs: [],
+  chatConversation: null,
+  analyticsCache: null,
+  splashDismissed: localStorage.getItem('corporate_splash_seen') === 'true'
 };
 
 // =========================================================================
@@ -339,6 +342,8 @@ const FLOW_STATE = {
 // INITIALIZATION
 // =========================================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  initSplashScreen();
+
   const savedToken = localStorage.getItem('corporate_jwt_token');
   const savedRole = localStorage.getItem('corporate_user_role');
 
@@ -370,12 +375,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function fetchInitialData() {
   try {
-    const [reqs, books, exps, risks, audits] = await Promise.all([
+    const [reqs, books, exps, risks, audits, notifs] = await Promise.all([
       apiFetch('/api/travel-requests'),
       apiFetch('/api/bookings'),
       apiFetch('/api/expenses'),
       apiFetch('/api/risk/alerts'),
-      apiFetch('/api/audit')
+      apiFetch('/api/audit'),
+      STATE.isAuthenticated ? apiFetch('/api/notifications') : Promise.resolve(null)
     ]);
 
     if (reqs && reqs.data) STATE.requests = reqs.data;
@@ -383,9 +389,64 @@ async function fetchInitialData() {
     if (exps && exps.data) STATE.expenses = exps.data;
     if (risks && risks.data) STATE.riskAlerts = risks.data;
     if (audits && audits.data) STATE.auditLogs = audits.data;
+    if (notifs && notifs.data) {
+      STATE.notifications = notifs.data.map(mapNotification);
+      updateNotificationBadge();
+    }
   } catch (err) {
     console.warn('Initial data preload error:', err);
   }
+}
+
+function mapNotification(n) {
+  return {
+    id: n.id,
+    title: n.title,
+    desc: n.message,
+    type: n.notificationType || 'ALERT',
+    time: formatRelativeTime(n.createdAt)
+  };
+}
+
+function formatRelativeTime(isoOrDate) {
+  if (!isoOrDate) return 'Just now';
+  const date = new Date(isoOrDate);
+  const diffMs = Date.now() - date.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function updateNotificationBadge() {
+  const badge = document.getElementById('notifBadge');
+  if (!badge) return;
+  const count = STATE.notifications.length;
+  badge.textContent = count > 9 ? '9+' : String(count);
+  badge.classList.toggle('hidden', count === 0);
+}
+
+function initSplashScreen() {
+  const splash = document.getElementById('splashScreen');
+  if (!splash) return;
+  if (STATE.splashDismissed) {
+    splash.classList.add('splash-hidden');
+    return;
+  }
+  safeCreateIcons();
+}
+
+function dismissSplash(openPortal) {
+  const splash = document.getElementById('splashScreen');
+  if (splash) splash.classList.add('splash-hidden');
+  localStorage.setItem('corporate_splash_seen', 'true');
+  STATE.splashDismissed = true;
+  if (openPortal) {
+    navigateToTab('login-portal');
+  }
+  safeCreateIcons();
 }
 
 // =========================================================================
@@ -1123,6 +1184,168 @@ async function handlePortalCredentialLogin(e) {
 }
 
 // =========================================================================
+// ROLE-SPECIFIC WORKFLOW PANELS (HR / Finance / Support reference screens)
+// =========================================================================
+async function renderRoleWorkflowPanel(roleKey) {
+  if (roleKey === 'ROLE_HR') {
+    const res = await apiFetch('/api/analytics/hr-budget');
+    const data = (res && res.data) ? res.data : null;
+    if (!data) return '';
+    const categories = data.utilizationBreakdown || [];
+    const recent = data.recentRequests || [];
+    return `
+      <div class="workflow-panel p-6 rounded-3xl border border-pink-500/30 mb-2">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="font-extrabold text-lg text-white flex items-center gap-2">
+            <i data-lucide="heart-handshake" class="w-5 h-5 text-pink-400"></i> HR Budget Management
+          </h3>
+          <span class="text-xs px-3 py-1 rounded-full bg-pink-500/15 text-pink-300 font-bold border border-pink-500/30">Live API: /api/analytics/hr-budget</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="stat-card-3d p-4 rounded-2xl border border-slate-800">
+            <span class="text-xs text-slate-400">Total Budget</span>
+            <div class="text-2xl font-extrabold text-white mt-1">${formatMoney(data.totalBudget)}</div>
+          </div>
+          <div class="stat-card-3d p-4 rounded-2xl border border-slate-800">
+            <span class="text-xs text-slate-400">Utilized</span>
+            <div class="text-2xl font-extrabold text-amber-400 mt-1">${formatMoney(data.utilized)}</div>
+            <div class="text-[11px] text-slate-500 mt-1">${(data.utilizationPercentage || 0).toFixed(1)}% burn rate</div>
+          </div>
+          <div class="stat-card-3d p-4 rounded-2xl border border-slate-800">
+            <span class="text-xs text-slate-400">Remaining</span>
+            <div class="text-2xl font-extrabold text-emerald-400 mt-1">${formatMoney(data.remaining)}</div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="p-4 rounded-2xl bg-dark-900/70 border border-slate-800">
+            <h4 class="text-sm font-bold text-white mb-3">Budget Utilization by Category</h4>
+            <div class="space-y-2 text-xs">
+              ${categories.map(c => `
+                <div class="flex items-center justify-between py-2 border-b border-slate-800/80">
+                  <span class="text-slate-300">${c.category}</span>
+                  <span class="font-bold text-indigo-300">${formatMoney(c.amount)} <span class="text-slate-500">(${c.percentage}%)</span></span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <div class="p-4 rounded-2xl bg-dark-900/70 border border-slate-800">
+            <h4 class="text-sm font-bold text-white mb-3">Recent Travel Requests</h4>
+            <div class="space-y-2 text-xs">
+              ${recent.slice(0, 5).map(r => `
+                <div class="flex items-center justify-between py-2 border-b border-slate-800/80">
+                  <div>
+                    <div class="font-bold text-white">${r.employeeName}</div>
+                    <div class="text-slate-400">${r.route}</div>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-full ${r.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'} font-bold">${r.status}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (roleKey === 'ROLE_FINANCE') {
+    const res = await apiFetch('/api/finance/pending-releases');
+    const releases = (res && res.data) ? res.data : [];
+    return `
+      <div class="workflow-panel p-6 rounded-3xl border border-emerald-500/30 mb-2">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="font-extrabold text-lg text-white flex items-center gap-2">
+            <i data-lucide="wallet" class="w-5 h-5 text-emerald-400"></i> Pending Fund Releases
+          </h3>
+          <span class="text-xs px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/30">${releases.length} Pending</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400">
+                <th class="py-2 px-3">Employee</th>
+                <th class="py-2 px-3">Report</th>
+                <th class="py-2 px-3">Amount</th>
+                <th class="py-2 px-3">Status</th>
+                <th class="py-2 px-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60">
+              ${releases.length ? releases.slice(0, 6).map(r => `
+                <tr>
+                  <td class="py-3 px-3 text-white font-bold">${r.employeeName}</td>
+                  <td class="py-3 px-3 text-slate-300">${r.reportNumber}</td>
+                  <td class="py-3 px-3 font-bold text-emerald-400">${formatMoney(r.amount)}</td>
+                  <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold">${r.status}</span></td>
+                  <td class="py-3 px-3 text-right">
+                    <button onclick="releaseFund(${r.id})" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition">Release</button>
+                  </td>
+                </tr>
+              `).join('') : `<tr><td colspan="5" class="py-6 text-center text-slate-400">No pending fund releases</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  if (roleKey === 'ROLE_SUPPORT') {
+    const res = await apiFetch('/api/support/desk');
+    const desk = (res && res.data) ? res.data : null;
+    if (!desk) return '';
+    const itineraries = desk.upcomingItineraries || [];
+    return `
+      <div class="workflow-panel p-6 rounded-3xl border border-cyan-500/30 mb-2">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="font-extrabold text-lg text-white flex items-center gap-2">
+            <i data-lucide="headphones" class="w-5 h-5 text-cyan-400"></i> Travel Agent Support Desk
+          </h3>
+          <span class="text-xs px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-300 font-bold border border-cyan-500/30">Live API: /api/support/desk</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+            <div class="text-3xl font-extrabold text-cyan-400">${desk.activeBookings || 0}</div>
+            <div class="text-xs text-slate-400 mt-1">Active Bookings</div>
+          </div>
+          <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+            <div class="text-3xl font-extrabold text-amber-400">${desk.pendingServices || 0}</div>
+            <div class="text-xs text-slate-400 mt-1">Pending Services</div>
+          </div>
+          <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+            <div class="text-3xl font-extrabold text-rose-400">${desk.supportTickets || 0}</div>
+            <div class="text-xs text-slate-400 mt-1">Support Tickets</div>
+          </div>
+        </div>
+        <h4 class="text-sm font-bold text-white mb-3">Upcoming Travel Itineraries</h4>
+        <div class="space-y-2">
+          ${itineraries.slice(0, 5).map(it => `
+            <div class="flex items-center justify-between p-3 rounded-xl bg-dark-900/80 border border-slate-800 text-xs">
+              <div>
+                <div class="font-bold text-white">${it.travelerName}</div>
+                <div class="text-slate-400">${it.route} • ${it.departureDate}</div>
+                <div class="text-indigo-300 font-mono mt-0.5">PNR: ${it.pnrNumber || 'Pending'}</div>
+              </div>
+              <button onclick="navigateToTab('itinerary')" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition">Confirm</button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  return '';
+}
+
+async function releaseFund(reportId) {
+  const res = await apiFetch(`/api/finance/pending-releases/${reportId}/release`, { method: 'POST' });
+  if (res && res.success) {
+    showToast(`Fund released for expense report #${reportId}`);
+    loadDashboard();
+  } else {
+    showToast('Unable to release fund. Please try again.');
+  }
+}
+
+// =========================================================================
 // 1. DASHBOARD VIEW (LIVE TELEMETRY)
 // =========================================================================
 async function loadDashboard() {
@@ -1141,6 +1364,8 @@ async function loadDashboard() {
   const requests = (reqRes && reqRes.data) ? reqRes.data : STATE.requests;
   const bookings = (bookRes && bookRes.data) ? bookRes.data : STATE.bookings;
   const expenses = (expRes && expRes.data) ? expRes.data : STATE.expenses;
+
+  const rolePanelHtml = await renderRoleWorkflowPanel(roleKey);
 
   const activeTrip = bookings && bookings.length > 0 ? bookings[0] : null;
   const pendingApprovalsCount = requests.filter(r => r.status === 'SUBMITTED' || r.status === 'PENDING').length;
@@ -1196,7 +1421,7 @@ async function loadDashboard() {
 
     <!-- KPI Metric Cards Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+      <div class="glass-panel stat-card-3d p-5 rounded-2xl border border-slate-800">
         <div class="flex items-center justify-between">
           <span class="text-xs font-semibold text-slate-400">Available Travel Budget</span>
           <i data-lucide="wallet" class="w-4 h-4 text-emerald-400"></i>
@@ -1205,7 +1430,7 @@ async function loadDashboard() {
         <div class="text-[11px] text-emerald-400 mt-1">Allocated: ${formatMoney(STATE.currentUser.wallet ? STATE.currentUser.wallet.allocated : 350000)}</div>
       </div>
 
-      <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+      <div class="glass-panel stat-card-3d p-5 rounded-2xl border border-slate-800">
         <div class="flex items-center justify-between">
           <span class="text-xs font-semibold text-slate-400">Pending Approvals</span>
           <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
@@ -1214,7 +1439,7 @@ async function loadDashboard() {
         <div class="text-[11px] text-slate-400 mt-1">Awaiting Manager & Finance Review</div>
       </div>
 
-      <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+      <div class="glass-panel stat-card-3d p-5 rounded-2xl border border-slate-800">
         <div class="flex items-center justify-between">
           <span class="text-xs font-semibold text-slate-400">Active Bookings & PNR</span>
           <i data-lucide="plane-takeoff" class="w-4 h-4 text-indigo-400"></i>
@@ -1223,7 +1448,7 @@ async function loadDashboard() {
         <div class="text-[11px] text-indigo-300 mt-1">E-Tickets & Boarding Passes Ready</div>
       </div>
 
-      <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+      <div class="glass-panel stat-card-3d p-5 rounded-2xl border border-slate-800">
         <div class="flex items-center justify-between">
           <span class="text-xs font-semibold text-slate-400">Total YTD Travel Spend</span>
           <i data-lucide="pie-chart" class="w-4 h-4 text-purple-400"></i>
@@ -1232,6 +1457,8 @@ async function loadDashboard() {
         <div class="text-[11px] text-emerald-400 mt-1">98.4% Policy Compliant</div>
       </div>
     </div>
+
+    ${rolePanelHtml}
 
     <!-- Active Trip Spotlight Banner & Quick Actions -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -2012,7 +2239,7 @@ async function loadItineraryTab() {
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-extrabold text-white tracking-tight">Unified Trip Itinerary & E-Ticket</h1>
-        <p class="text-xs text-slate-400 mt-1">Live chronological timeline combining flights, airport transfers, hotel check-ins, and client meetings.</p>
+        <p class="text-xs text-slate-400 mt-1">Live bookings from <code class="text-indigo-300">GET /api/bookings/my</code> — flights, transfers, hotels, and meetings.</p>
       </div>
       <div class="flex items-center gap-3">
         <button onclick="openBoardingPassModal()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition">
@@ -2024,60 +2251,81 @@ async function loadItineraryTab() {
       </div>
     </div>
 
-    <!-- Timeline Container -->
-    <div class="glass-panel p-8 rounded-2xl border border-slate-800">
-      <div class="border-b border-slate-800 pb-4 mb-6 flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-bold text-white">Trip: Annual Tech Summit & Architecture Review (Delhi NCR)</h2>
-          <p class="text-xs text-indigo-400 font-semibold mt-0.5">PNR: PNR683921 • E-Ticket: ETK-098-8472910 • Travel Dates: Sep 15 - Sep 18, 2026</p>
+    <div id="itineraryContainer" class="glass-panel p-8 rounded-2xl border border-slate-800">
+      <div class="text-center text-slate-400 text-sm py-8">Loading itinerary from backend...</div>
+    </div>
+  `;
+
+  safeCreateIcons();
+
+  const res = await apiFetch('/api/bookings/my');
+  const bookings = (res && res.data) ? res.data : STATE.bookings;
+  const active = bookings && bookings.length > 0 ? bookings[0] : null;
+  const container = document.getElementById('itineraryContainer');
+
+  if (!container) return;
+
+  if (!active) {
+    container.innerHTML = `
+      <div class="text-center py-10">
+        <i data-lucide="calendar-x" class="w-12 h-12 text-slate-500 mx-auto mb-3"></i>
+        <p class="text-slate-400 text-sm">No confirmed bookings yet. Complete the travel request flow to generate an itinerary.</p>
+        <button onclick="navigateToTab('search')" class="mt-4 px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs">Book Travel</button>
+      </div>
+    `;
+    safeCreateIcons();
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="border-b border-slate-800 pb-4 mb-6 flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-white">Trip: ${active.tripName || active.bookingReference || 'Corporate Business Trip'}</h2>
+        <p class="text-xs text-indigo-400 font-semibold mt-0.5">PNR: ${active.pnrNumber || 'PNR683921'} • E-Ticket: ${active.eTicketNumber || 'ETK-098-8472910'} • Ref: ${active.bookingReference || 'BK-0001'}</p>
+      </div>
+      <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-extrabold border border-emerald-500/30">${active.status || 'CONFIRMED'} ITINERARY</span>
+    </div>
+
+    <div class="space-y-6 relative pl-6">
+      <div class="relative flex items-start gap-4">
+        <div class="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-600/30 z-10">
+          <i data-lucide="plane-takeoff" class="w-4 h-4"></i>
         </div>
-        <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-extrabold border border-emerald-500/30">CONFIRMED ITINERARY</span>
+        <div class="flex-1 bg-dark-900/80 border border-slate-800 p-4 rounded-2xl stat-card-3d">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-indigo-400">07:30 AM • Departure</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">${active.bookingType || 'FLIGHT'}</span>
+          </div>
+          <h4 class="font-bold text-sm text-white mt-1">Confirmed Flight Booking</h4>
+          <p class="text-xs text-slate-400 mt-1">Total: ${formatMoney(active.totalAmount || 28000)} • Payment: ${active.paymentMethod || 'CORPORATE_CARD'}</p>
+        </div>
       </div>
 
-      <div class="space-y-6 relative pl-6">
-        <!-- Event 1: Flight Departure -->
-        <div class="relative flex items-start gap-4">
-          <div class="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-600/30 z-10">
-            <i data-lucide="plane-takeoff" class="w-4 h-4"></i>
-          </div>
-          <div class="flex-1 bg-dark-900/80 border border-slate-800 p-4 rounded-2xl">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-mono font-bold text-indigo-400">07:30 AM • Sep 15</span>
-              <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">FLIGHT AI-839</span>
-            </div>
-            <h4 class="font-bold text-sm text-white mt-1">Flight Departure (Hyderabad HYD ➔ Delhi DEL)</h4>
-            <p class="text-xs text-slate-400 mt-1">Rajiv Gandhi Intl Airport Terminal 1 • Seat 14A (Window) • 25kg Checked Baggage</p>
-          </div>
+      <div class="relative flex items-start gap-4">
+        <div class="h-8 w-8 rounded-full bg-amber-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-amber-600/30 z-10">
+          <i data-lucide="car" class="w-4 h-4"></i>
         </div>
-
-        <!-- Event 2: Airport Transfer -->
-        <div class="relative flex items-start gap-4">
-          <div class="h-8 w-8 rounded-full bg-amber-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-amber-600/30 z-10">
-            <i data-lucide="car" class="w-4 h-4"></i>
+        <div class="flex-1 bg-dark-900/80 border border-slate-800 p-4 rounded-2xl stat-card-3d">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-amber-400">10:30 AM • Transfer</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">UBER CORPORATE</span>
           </div>
-          <div class="flex-1 bg-dark-900/80 border border-slate-800 p-4 rounded-2xl">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-mono font-bold text-amber-400">10:30 AM • Sep 15</span>
-              <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">UBER CORPORATE</span>
-            </div>
-            <h4 class="font-bold text-sm text-white mt-1">Executive Airport Transfer to Hotel</h4>
-            <p class="text-xs text-slate-400 mt-1">IGIA Terminal 3 Uber Zone ➔ Taj Palace Diplomatic Enclave • Ref: UBER-TRIP-749</p>
-          </div>
+          <h4 class="font-bold text-sm text-white mt-1">Executive Airport Transfer</h4>
+          <p class="text-xs text-slate-400 mt-1">Airport pickup to corporate hotel • Ref: UBER-TRIP-749</p>
         </div>
+      </div>
 
-        <!-- Event 3: Hotel Check-in -->
-        <div class="relative flex items-start gap-4">
-          <div class="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-emerald-600/30 z-10">
-            <i data-lucide="hotel" class="w-4 h-4"></i>
+      <div class="relative flex items-start gap-4">
+        <div class="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-emerald-600/30 z-10">
+          <i data-lucide="hotel" class="w-4 h-4"></i>
+        </div>
+        <div class="flex-1 bg-dark-900/80 border border-slate-800 p-4 rounded-2xl stat-card-3d">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-emerald-400">12:00 PM • Check-in</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">HOTEL</span>
           </div>
-          <div class="flex-1 bg-dark-900/80 border border-slate-800 p-4 rounded-2xl">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-mono font-bold text-emerald-400">12:00 PM • Sep 15</span>
-              <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">HOTEL CHECK-IN</span>
-            </div>
-            <h4 class="font-bold text-sm text-white mt-1">Taj Palace & Executive Suites Check-In</h4>
-            <p class="text-xs text-slate-400 mt-1">Chanakyapuri Diplomatic Enclave • Deluxe King Suite • Complimentary Breakfast</p>
-          </div>
+          <h4 class="font-bold text-sm text-white mt-1">Corporate Hotel Accommodation</h4>
+          <p class="text-xs text-slate-400 mt-1">Negotiated corporate rate applied • Complimentary breakfast included</p>
         </div>
       </div>
     </div>
@@ -2595,7 +2843,7 @@ async function loadAnalyticsTab() {
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-extrabold text-white tracking-tight">Executive Travel Analytics & Spending ROI</h1>
-        <p class="text-xs text-slate-400 mt-1">Multi-dimensional analytics for executive leadership, spend forecast, savings, and sustainability.</p>
+        <p class="text-xs text-slate-400 mt-1">Live data from <code class="text-indigo-300">GET /api/analytics/dashboard</code> — spend forecast, savings, and sustainability.</p>
       </div>
       <div class="flex items-center gap-3">
         <button onclick="exportAnalyticsCsv()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-800 hover:bg-dark-700 border border-slate-700 text-slate-200 font-bold text-xs transition">
@@ -2605,6 +2853,10 @@ async function loadAnalyticsTab() {
           <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Restart Flow 🔄
         </button>
       </div>
+    </div>
+
+    <div id="analyticsSummaryCards" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="stat-card-3d glass-panel p-4 rounded-2xl border border-slate-800 col-span-2 md:col-span-4 text-center text-slate-400 text-xs">Loading executive analytics...</div>
     </div>
 
     <!-- Analytics Charts Grid -->
@@ -2623,27 +2875,79 @@ async function loadAnalyticsTab() {
         </div>
       </div>
     </div>
+
+    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+      <h3 class="font-extrabold text-sm text-white mb-4">Top Destinations</h3>
+      <div id="topDestinationsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs"></div>
+    </div>
   `;
 
   safeCreateIcons();
-  setTimeout(renderCharts, 100);
+
+  const res = await apiFetch('/api/analytics/dashboard');
+  STATE.analyticsCache = (res && res.data) ? res.data : null;
+  renderAnalyticsSummaryCards(STATE.analyticsCache);
+  setTimeout(() => renderCharts(STATE.analyticsCache), 100);
 }
 
-function renderCharts() {
+function renderAnalyticsSummaryCards(data) {
+  const container = document.getElementById('analyticsSummaryCards');
+  if (!container) return;
+  if (!data) {
+    container.innerHTML = '<div class="col-span-4 text-center text-slate-400 text-xs">Analytics unavailable</div>';
+    return;
+  }
+  container.innerHTML = `
+    <div class="stat-card-3d glass-panel p-4 rounded-2xl border border-slate-800">
+      <span class="text-xs text-slate-400">Total Travel Spend</span>
+      <div class="text-xl font-extrabold text-white mt-1">${formatMoney(data.totalTravelSpend)}</div>
+    </div>
+    <div class="stat-card-3d glass-panel p-4 rounded-2xl border border-slate-800">
+      <span class="text-xs text-slate-400">Total Savings</span>
+      <div class="text-xl font-extrabold text-emerald-400 mt-1">${formatMoney(data.totalSavings)}</div>
+    </div>
+    <div class="stat-card-3d glass-panel p-4 rounded-2xl border border-slate-800">
+      <span class="text-xs text-slate-400">Policy Compliance</span>
+      <div class="text-xl font-extrabold text-indigo-400 mt-1">${data.policyComplianceRate || 0}%</div>
+    </div>
+    <div class="stat-card-3d glass-panel p-4 rounded-2xl border border-slate-800">
+      <span class="text-xs text-slate-400">CO₂ Emissions</span>
+      <div class="text-xl font-extrabold text-cyan-400 mt-1">${data.totalCarbonEmissionsKg || 0} kg</div>
+    </div>
+  `;
+
+  const destList = document.getElementById('topDestinationsList');
+  if (destList && data.topDestinations) {
+    destList.innerHTML = data.topDestinations.map(d => `
+      <div class="p-3 rounded-xl bg-dark-900/80 border border-slate-800 flex items-center justify-between">
+        <div>
+          <div class="font-bold text-white">${d.destination}</div>
+          <div class="text-slate-400">${d.tripCount} trips</div>
+        </div>
+        <div class="font-extrabold text-indigo-300">${formatMoney(d.totalSpend)}</div>
+      </div>
+    `).join('');
+  }
+}
+
+function renderCharts(analyticsData) {
   try {
     if (typeof Chart === 'undefined') return;
+
+    const trends = (analyticsData && analyticsData.monthlyTrends) ? analyticsData.monthlyTrends : [];
+    const depts = (analyticsData && analyticsData.departmentBreakdown) ? analyticsData.departmentBreakdown : [];
 
     const ctx1 = document.getElementById('monthlySpendChart');
     if (ctx1) {
       new Chart(ctx1, {
         type: 'line',
         data: {
-          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+          labels: trends.length ? trends.map(t => t.month) : ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
           datasets: [{
             label: 'Total Spend (₹)',
-            data: [225000, 270000, 338000, 274000, 377000, 420000],
-            borderColor: '#6366f1',
-            backgroundColor: 'rgba(99, 102, 241, 0.15)',
+            data: trends.length ? trends.map(t => Number(t.totalSpend)) : [225000, 270000, 338000, 274000, 377000],
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0, 123, 255, 0.15)',
             fill: true,
             tension: 0.4
           }]
@@ -2665,10 +2969,10 @@ function renderCharts() {
       new Chart(ctx2, {
         type: 'doughnut',
         data: {
-          labels: ['Global Sales', 'Engineering R&D', 'Customer Success', 'Executive Ops'],
+          labels: depts.length ? depts.map(d => d.departmentName) : ['Sales', 'Engineering', 'Customer Success', 'Executive'],
           datasets: [{
-            data: [1140000, 620000, 290000, 480000],
-            backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ec4899']
+            data: depts.length ? depts.map(d => Number(d.spentAmount)) : [1140000, 620000, 290000, 480000],
+            backgroundColor: ['#007bff', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6']
           }]
         },
         options: {
@@ -2684,11 +2988,18 @@ function renderCharts() {
 }
 
 function exportAnalyticsCsv() {
-  const csvContent = "data:text/csv;charset=utf-8,Month,FlightSpend,HotelSpend,TransportSpend,TotalSpend\nJan,120000,80000,25000,225000\nFeb,145000,95000,30000,270000\nMar,190000,110000,38000,338000\nApr,160000,85000,29000,274000\nMay,210000,125000,42000,377000";
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", "corporate_travel_spend_report.csv");
+  const data = STATE.analyticsCache;
+  const trends = (data && data.monthlyTrends) ? data.monthlyTrends : [];
+  let csv = 'Month,FlightSpend,HotelSpend,TransportSpend,TotalSpend\n';
+  if (trends.length) {
+    csv += trends.map(t => `${t.month},${t.flightSpend},${t.hotelSpend},${t.transportSpend},${t.totalSpend}`).join('\n');
+  } else {
+    csv += 'Jan,120000,80000,25000,225000\nFeb,145000,95000,30000,270000';
+  }
+  const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csv);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', 'corporate_travel_spend_report.csv');
   document.body.appendChild(link);
   link.click();
   showToast('Finance CSV report downloaded successfully!');
@@ -2862,21 +3173,28 @@ function launchModule(moduleId) {
   showToast(`Opened ${moduleId.toUpperCase()} module`);
 }
 
-function toggleNotificationsModal() {
+async function toggleNotificationsModal() {
   const modal = document.getElementById('notifModal');
   const container = document.getElementById('notifListContainer');
   if (!modal || !container) return;
   
   if (modal.classList.contains('hidden')) {
-    container.innerHTML = STATE.notifications.map(n => `
-      <div class="p-3 rounded-xl bg-dark-900 border border-slate-800 text-xs">
+    if (STATE.isAuthenticated) {
+      const res = await apiFetch('/api/notifications');
+      if (res && res.data) {
+        STATE.notifications = res.data.map(mapNotification);
+        updateNotificationBadge();
+      }
+    }
+    container.innerHTML = STATE.notifications.length ? STATE.notifications.map(n => `
+      <div class="p-3 rounded-xl bg-dark-900 border border-slate-800 text-xs stat-card-3d">
         <div class="flex items-center justify-between font-bold text-white">
           <span>${n.title}</span>
           <span class="text-[10px] text-slate-500">${n.time}</span>
         </div>
         <p class="text-slate-400 text-[11px] mt-1">${n.desc}</p>
       </div>
-    `).join('');
+    `).join('') : '<div class="text-center text-slate-400 text-xs py-8">No notifications yet</div>';
     modal.classList.remove('hidden');
   } else {
     modal.classList.add('hidden');
@@ -2884,13 +3202,57 @@ function toggleNotificationsModal() {
   safeCreateIcons();
 }
 
-function toggleLiveChatDrawer() {
+async function toggleLiveChatDrawer() {
   const drawer = document.getElementById('chatDrawer');
-  if (drawer) drawer.classList.toggle('hidden');
+  if (!drawer) return;
+  const opening = drawer.classList.contains('hidden');
+  drawer.classList.toggle('hidden');
+  if (opening && STATE.isAuthenticated) {
+    await loadChatConversation();
+  }
   safeCreateIcons();
 }
 
-function sendChatMessage() {
+async function loadChatConversation() {
+  const box = document.getElementById('chatMessagesBox');
+  if (!box) return;
+
+  const convRes = await apiFetch('/api/chat/conversation?type=SUPPORT');
+  if (!convRes || !convRes.data) return;
+
+  STATE.chatConversation = convRes.data;
+  const msgRes = await apiFetch(`/api/chat/messages/${convRes.data.id}`);
+  const messages = (msgRes && msgRes.data) ? msgRes.data : [];
+
+  if (messages.length === 0) {
+    box.innerHTML = `
+      <div class="flex gap-2">
+        <div class="h-6 w-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold">CS</div>
+        <div class="bg-dark-700 p-2.5 rounded-xl rounded-tl-none max-w-[80%] text-slate-200">
+          Hello ${STATE.currentUser.name.split(' ')[0]}! How can our 24/7 travel care team assist you today?
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  box.innerHTML = messages.map(m => {
+    const isUser = m.senderType === 'USER';
+    return isUser ? `
+      <div class="flex gap-2 justify-end">
+        <div class="bg-indigo-600 p-2.5 rounded-xl rounded-tr-none max-w-[80%] text-white">${m.message}</div>
+      </div>
+    ` : `
+      <div class="flex gap-2">
+        <div class="h-6 w-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold">CS</div>
+        <div class="bg-dark-700 p-2.5 rounded-xl rounded-tl-none max-w-[80%] text-slate-200">${m.message}</div>
+      </div>
+    `;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendChatMessage() {
   const input = document.getElementById('chatInputText');
   const box = document.getElementById('chatMessagesBox');
   if (!input || !input.value.trim() || !box) return;
@@ -2907,17 +3269,21 @@ function sendChatMessage() {
   `;
   box.scrollTop = box.scrollHeight;
 
-  setTimeout(() => {
-    box.innerHTML += `
-      <div class="flex gap-2">
-        <div class="h-6 w-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold">CS</div>
-        <div class="bg-dark-700 p-2.5 rounded-xl rounded-tr-none max-w-[80%] text-slate-200">
-          Hello Priya! I have confirmed your Taj Palace reservation in Delhi. How can I assist with your itinerary?
-        </div>
-      </div>
-    `;
-    box.scrollTop = box.scrollHeight;
-  }, 1000);
+  if (!STATE.chatConversation) {
+    await loadChatConversation();
+  }
+  if (!STATE.chatConversation) return;
+
+  const roomId = STATE.chatConversation.roomId;
+  await apiFetch(`/api/chat/messages?roomId=${encodeURIComponent(roomId)}&senderType=USER`, {
+    method: 'POST',
+    body: JSON.stringify(msg),
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  setTimeout(async () => {
+    await loadChatConversation();
+  }, 800);
 }
 
 function openAiModal() {
@@ -2964,6 +3330,8 @@ window.changeCurrency = changeCurrency;
 window.toggleNotificationsModal = toggleNotificationsModal;
 window.toggleLiveChatDrawer = toggleLiveChatDrawer;
 window.sendChatMessage = sendChatMessage;
+window.dismissSplash = dismissSplash;
+window.releaseFund = releaseFund;
 window.openAiModal = openAiModal;
 window.closeModal = closeModal;
 window.openNewRequestModal = openNewRequestModal;

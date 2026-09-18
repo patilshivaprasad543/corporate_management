@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.corporate.travel.dto.ExpenseDto;
+import com.corporate.travel.dto.WorkflowDto;
 import com.corporate.travel.entity.*;
 import com.corporate.travel.entity.enums.ExpenseCategory;
 import com.corporate.travel.entity.enums.ExpenseStatus;
@@ -174,6 +175,56 @@ public class ExpenseService {
         return expenseReportRepository.findAll().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<WorkflowDto.PendingFundRelease> getPendingFundReleases() {
+        return expenseReportRepository.findAll().stream()
+                .filter(r -> r.getStatus() == ExpenseStatus.SUBMITTED
+                        || r.getStatus() == ExpenseStatus.FINANCE_REVIEW
+                        || r.getStatus() == ExpenseStatus.APPROVED
+                        || r.getStatus() == ExpenseStatus.MANAGER_REVIEW)
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(r -> new WorkflowDto.PendingFundRelease(
+                        r.getId(),
+                        r.getReportNumber(),
+                        r.getEmployee() != null ? r.getEmployee().getFullName() : "Employee",
+                        r.getTitle(),
+                        r.getTotalAmount(),
+                        r.getCreatedAt(),
+                        r.getStatus().name()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ExpenseDto.ReportResponse releaseFund(Long reportId, Long financeUserId) {
+        ExpenseReport report = expenseReportRepository.findById(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("ExpenseReport", "id", reportId));
+
+        if (report.getStatus() == ExpenseStatus.REIMBURSED) {
+            return mapToResponse(report);
+        }
+
+        report.setStatus(ExpenseStatus.REIMBURSED);
+        report.setApprovedAmount(report.getTotalAmount());
+
+        walletRepository.findByUserId(report.getEmployee().getId()).ifPresent(w -> {
+            w.setPendingExpenses(w.getPendingExpenses().subtract(report.getTotalAmount()));
+            w.setReimbursedAmount(w.getReimbursedAmount().add(report.getTotalAmount()));
+            walletRepository.save(w);
+        });
+
+        notificationService.sendNotification(report.getEmployee().getId(), "Fund Released",
+                "Finance released ₹" + report.getTotalAmount() + " for expense report " + report.getReportNumber() + ".",
+                NotificationType.EXPENSE_APPROVED, "/expenses");
+
+        auditService.logAction(
+                userRepository.findById(financeUserId).map(User::getEmail).orElse("finance@acmetech.com"),
+                "RELEASE_FUND", "ExpenseReport", report.getId(),
+                "Released fund reimbursement for " + report.getReportNumber(), null);
+
+        return mapToResponse(expenseReportRepository.save(report));
     }
 
     public ExpenseDto.ReportResponse mapToResponse(ExpenseReport r) {

@@ -66,6 +66,37 @@
 </head>
 <body class="bg-dark-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
 
+  <!-- Reference Workflow Splash Screen -->
+  <div id="splashScreen" class="splash-screen">
+    <div class="splash-scene">
+      <div class="splash-globe"></div>
+      <div class="splash-plane">
+        <i data-lucide="plane" class="w-16 h-16 text-brand-300"></i>
+      </div>
+      <div class="splash-monuments">
+        <span class="splash-monument splash-monument-a"></span>
+        <span class="splash-monument splash-monument-b"></span>
+        <span class="splash-monument splash-monument-c"></span>
+      </div>
+    </div>
+    <div class="splash-content glass-panel-3d">
+      <span class="splash-badge">CorporateTravel360</span>
+      <h1 class="splash-title">Your Journey<br><span class="text-brand-300">Our Priority</span></h1>
+      <p class="splash-subtitle">Enterprise travel management across 9 role-based portals — from request to reimbursement.</p>
+      <div class="splash-actions">
+        <button onclick="dismissSplash(true)" class="splash-btn-primary">
+          <i data-lucide="rocket" class="w-4 h-4"></i> Get Started
+        </button>
+        <button onclick="dismissSplash(false)" class="splash-btn-secondary">
+          Explore Workflow
+        </button>
+      </div>
+      <div class="splash-nav-hints">
+        <span>Explore</span><span>Work</span><span>Grow</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Top Announcement / Live Flight Alert Banner -->
   <div id="topAlertBanner" class="bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 px-4 py-2 text-xs font-medium text-indigo-200 border-b border-indigo-500/20 flex items-center justify-between no-print">
     <div class="flex items-center gap-2">
