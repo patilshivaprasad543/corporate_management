@@ -1019,11 +1019,22 @@ function updateWalletDisplay() {
 function renderMarketingHomepage() {
   if (STATE.isAuthenticated) return '';
   return `
-    <section class="carousel-header rounded mb-4 overflow-hidden">
-      <div class="position-relative" style="min-height:420px;">
+    <section class="home-3d-scene carousel-header rounded mb-4 overflow-hidden popout-3d-tilt" data-tilt-depth="8">
+      <div class="position-relative home-3d-hero-wrap" style="min-height:480px;">
         <img src="/travisa/img/carousel-1.jpg" class="position-absolute w-100 h-100 object-fit-cover" alt="">
-        <div class="carousel-caption d-flex align-items-center justify-content-center h-100 w-100">
-          <div class="text-center p-4" style="max-width:760px;">
+        <div class="home-3d-overlay position-absolute w-100 h-100"></div>
+
+        <div class="home-3d-float home-3d-float-left popout-3d popout-3d-float" data-tilt-depth="14">
+          <img src="${WORKFLOW_IMAGES.flightCard}" alt="Flight booking preview">
+          <span><i data-lucide="plane" class="w-3.5 h-3.5"></i> Corporate fares</span>
+        </div>
+        <div class="home-3d-float home-3d-float-right popout-3d popout-3d-float" data-tilt-depth="16">
+          <img src="${WORKFLOW_IMAGES.dashboardTrip}" alt="Trip dashboard preview">
+          <span><i data-lucide="map" class="w-3.5 h-3.5"></i> Live itinerary</span>
+        </div>
+
+        <div class="carousel-caption d-flex align-items-center justify-content-center h-100 w-100 position-relative">
+          <div class="home-3d-hero-card popout-3d popout-3d-hero popout-3d-tilt text-center p-4 p-md-5" data-tilt-depth="10">
             <h5 class="sub-title text-secondary text-uppercase fw-bold mb-3">Corporate travel management</h5>
             <h1 class="display-4 text-capitalize text-white mb-3 fw-bold">Travel smarter. Spend less. Stay compliant.</h1>
             <p class="text-white mb-4 fs-6">Everything your team needs to book corporate travel, get approvals, manage itineraries, and reconcile expenses — in one platform.</p>
@@ -1039,11 +1050,11 @@ function renderMarketingHomepage() {
       </div>
     </section>
 
-    <div class="container-fluid counter-facts py-5 mb-4 rounded">
+    <div class="container-fluid counter-facts py-5 mb-4 rounded home-3d-stats">
       <div class="container py-2">
         <div class="row g-4">
           <div class="col-12 col-sm-6 col-xl-3">
-            <div class="counter popout-3d">
+            <div class="counter popout-3d popout-3d-delay-1 popout-3d-tilt" data-tilt-depth="12">
               <div class="counter-icon"><i class="fas fa-percent"></i></div>
               <div class="counter-content">
                 <h3>Savings</h3>
@@ -1052,7 +1063,7 @@ function renderMarketingHomepage() {
             </div>
           </div>
           <div class="col-12 col-sm-6 col-xl-3">
-            <div class="counter popout-3d">
+            <div class="counter popout-3d popout-3d-delay-2 popout-3d-tilt" data-tilt-depth="12">
               <div class="counter-icon"><i class="fas fa-clock"></i></div>
               <div class="counter-content">
                 <h3>Time Saved</h3>
@@ -1061,7 +1072,7 @@ function renderMarketingHomepage() {
             </div>
           </div>
           <div class="col-12 col-sm-6 col-xl-3">
-            <div class="counter popout-3d">
+            <div class="counter popout-3d popout-3d-delay-3 popout-3d-tilt" data-tilt-depth="12">
               <div class="counter-icon"><i class="fas fa-server"></i></div>
               <div class="counter-content">
                 <h3>Uptime SLA</h3>
@@ -1070,7 +1081,7 @@ function renderMarketingHomepage() {
             </div>
           </div>
           <div class="col-12 col-sm-6 col-xl-3">
-            <div class="counter popout-3d">
+            <div class="counter popout-3d popout-3d-delay-4 popout-3d-tilt" data-tilt-depth="12">
               <div class="counter-icon"><i class="fas fa-headset"></i></div>
               <div class="counter-content">
                 <h3>Support</h3>
@@ -1082,6 +1093,42 @@ function renderMarketingHomepage() {
       </div>
     </div>
 
+    <section class="home-3d-showcase container-fluid py-5 mb-4">
+      <div class="container">
+        <div class="section-title text-center mb-5">
+          <div class="sub-style"><h5 class="sub-title text-primary px-3">Interactive 3D previews</h5></div>
+          <h2 class="display-6 mb-2">Explore the platform in depth</h2>
+          <p class="text-muted mb-0">Hover cards to pop them forward — the same modules you use after sign-in.</p>
+        </div>
+        <div class="home-3d-showcase-grid">
+          <article class="home-3d-preview popout-3d popout-3d-tilt popout-3d-delay-1" data-tilt-depth="18" onclick="loginAsRole('ROLE_EMPLOYEE'); navigateToTab('search');">
+            <div class="home-3d-preview-img" style="background-image:url('${WORKFLOW_IMAGES.flightCard}')"></div>
+            <div class="home-3d-preview-body">
+              <span class="home-3d-preview-badge"><i data-lucide="search" class="w-3.5 h-3.5"></i> Book Travel</span>
+              <h3>Search corporate rates</h3>
+              <p>Flights, hotels, and ground transport with instant policy checks.</p>
+            </div>
+          </article>
+          <article class="home-3d-preview popout-3d popout-3d-tilt popout-3d-delay-2 home-3d-preview-featured" data-tilt-depth="22" onclick="loginAsRole('ROLE_EMPLOYEE'); navigateToTab('dashboard');">
+            <div class="home-3d-preview-img" style="background-image:url('${WORKFLOW_IMAGES.employeeBanner}')"></div>
+            <div class="home-3d-preview-body">
+              <span class="home-3d-preview-badge"><i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Dashboard</span>
+              <h3>Traveler command center</h3>
+              <p>Trips, wallet balance, approvals, and AI assistant in one view.</p>
+            </div>
+          </article>
+          <article class="home-3d-preview popout-3d popout-3d-tilt popout-3d-delay-3" data-tilt-depth="18" onclick="loginAsRole('ROLE_SUPER_ADMIN'); navigateToTab('analytics');">
+            <div class="home-3d-preview-img" style="background-image:url('${WORKFLOW_IMAGES.city}')"></div>
+            <div class="home-3d-preview-body">
+              <span class="home-3d-preview-badge"><i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i> Analytics</span>
+              <h3>Executive insights</h3>
+              <p>Spend trends, compliance scores, and carbon ROI dashboards.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <div class="container-fluid features overflow-hidden py-4 mb-4">
       <div class="container">
         <div class="section-title text-center mb-5">
@@ -1090,28 +1137,28 @@ function renderMarketingHomepage() {
         </div>
         <div class="row g-4 justify-content-center text-center">
           <div class="col-md-6 col-lg-3">
-            <div class="feature-item text-center p-4 popout-3d h-100">
+            <div class="feature-item text-center p-4 popout-3d popout-3d-tilt h-100" data-tilt-depth="10">
               <div class="feature-icon p-3 mb-3 mx-auto"><i data-lucide="plane" class="w-8 h-8 text-primary"></i></div>
               <h5 class="mb-2">Book & manage trips</h5>
               <p class="mb-0 small">Search negotiated corporate rates for flights, hotels, and ground transport.</p>
             </div>
           </div>
           <div class="col-md-6 col-lg-3">
-            <div class="feature-item text-center p-4 popout-3d h-100">
+            <div class="feature-item text-center p-4 popout-3d popout-3d-tilt h-100" data-tilt-depth="10">
               <div class="feature-icon p-3 mb-3 mx-auto"><i data-lucide="check-square" class="w-8 h-8 text-primary"></i></div>
               <h5 class="mb-2">Policy & approvals</h5>
               <p class="mb-0 small">Multi-tier approval workflows with automatic policy checks.</p>
             </div>
           </div>
           <div class="col-md-6 col-lg-3">
-            <div class="feature-item text-center p-4 popout-3d h-100">
+            <div class="feature-item text-center p-4 popout-3d popout-3d-tilt h-100" data-tilt-depth="10">
               <div class="feature-icon p-3 mb-3 mx-auto"><i data-lucide="receipt" class="w-8 h-8 text-primary"></i></div>
               <h5 class="mb-2">Expenses & OCR</h5>
               <p class="mb-0 small">Scan receipts and get reimbursed with AI fraud detection.</p>
             </div>
           </div>
           <div class="col-md-6 col-lg-3">
-            <div class="feature-item text-center p-4 popout-3d h-100">
+            <div class="feature-item text-center p-4 popout-3d popout-3d-tilt h-100" data-tilt-depth="10">
               <div class="feature-icon p-3 mb-3 mx-auto"><i data-lucide="shield-alert" class="w-8 h-8 text-primary"></i></div>
               <h5 class="mb-2">Duty of care</h5>
               <p class="mb-0 small">Live risk alerts, traveler tracking, and emergency SOS.</p>
@@ -1123,12 +1170,12 @@ function renderMarketingHomepage() {
 
     <div class="container-fluid testimonial overflow-hidden pb-4 mb-4">
       <div class="container py-2">
-        <div class="testimonial-item">
+        <div class="testimonial-item popout-3d popout-3d-tilt home-3d-testimonial" data-tilt-depth="14">
           <div class="testimonial-content p-4 mb-4">
             <p class="fs-5 mb-0">"CorporateTravel360 cut our travel spend by 22% in the first quarter while giving finance full visibility into every trip."</p>
           </div>
           <div class="d-flex align-items-center gap-3">
-            <img src="/travisa/img/testimonial-1.jpg" class="rounded-circle" style="width:80px;height:80px;object-fit:cover;" alt="">
+            <img src="/travisa/img/testimonial-1.jpg" class="rounded-circle home-3d-avatar-pop" style="width:80px;height:80px;object-fit:cover;" alt="">
             <div>
               <h5 class="mb-0">Sarah Connor</h5>
               <p class="mb-0 text-muted small">VP Operations, Acme Global Technologies</p>
@@ -1138,6 +1185,24 @@ function renderMarketingHomepage() {
       </div>
     </div>
   `;
+}
+
+function initHomepage3D() {
+  const tiltEls = document.querySelectorAll('.popout-3d-tilt');
+  tiltEls.forEach(el => {
+    if (el.dataset.tiltBound) return;
+    el.dataset.tiltBound = 'true';
+    const depth = Number(el.dataset.tiltDepth || 10);
+    el.addEventListener('mousemove', (e) => {
+      const rect = el.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      el.style.transform = `perspective(900px) rotateX(${(-y * depth * 0.35).toFixed(2)}deg) rotateY(${(x * depth * 0.45).toFixed(2)}deg) translateZ(${depth}px)`;
+    });
+    el.addEventListener('mouseleave', () => {
+      el.style.transform = '';
+    });
+  });
 }
 
 function loadLoginPortalTab() {
@@ -1433,6 +1498,7 @@ function loadLoginPortalTab() {
   `;
 
   safeCreateIcons();
+  if (!STATE.isAuthenticated) initHomepage3D();
 }
 
 async function handlePortalCredentialLogin(e) {
@@ -4047,6 +4113,7 @@ window.toggleNotificationsModal = toggleNotificationsModal;
 window.toggleLiveChatDrawer = toggleLiveChatDrawer;
 window.sendChatMessage = sendChatMessage;
 window.dismissSplash = dismissSplash;
+window.initHomepage3D = initHomepage3D;
 window.requestWizardNext = requestWizardNext;
 window.requestWizardPrev = requestWizardPrev;
 window.switchChatChannel = switchChatChannel;

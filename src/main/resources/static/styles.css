@@ -1483,11 +1483,191 @@ header .rounded-xl.bg-gradient-to-br {
   transition: transform 0.35s ease, box-shadow 0.35s ease;
 }
 .popout-3d:hover {
-  transform: perspective(900px) rotateX(2deg) translateY(-6px) translateZ(12px);
+  transform: perspective(900px) rotateX(2deg) translateY(-8px) translateZ(16px);
   box-shadow:
-    0 20px 50px rgba(0, 0, 0, 0.45),
-    0 0 30px rgba(0, 123, 255, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 24px 55px rgba(0, 58, 102, 0.22),
+    0 0 30px rgba(224, 36, 84, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.popout-3d-delay-1 { transition-delay: 0.04s; }
+.popout-3d-delay-2 { transition-delay: 0.08s; }
+.popout-3d-delay-3 { transition-delay: 0.12s; }
+.popout-3d-delay-4 { transition-delay: 0.16s; }
+
+.popout-3d-tilt {
+  will-change: transform;
+}
+
+.popout-3d-hero {
+  transform: perspective(1000px) rotateX(4deg) translateZ(20px);
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.35),
+    0 0 40px rgba(224, 36, 84, 0.2);
+}
+
+.popout-3d-float {
+  animation: home3dFloat 6s ease-in-out infinite;
+}
+
+@keyframes home3dFloat {
+  0%, 100% { transform: perspective(900px) rotateY(-8deg) translateZ(24px) translateY(0); }
+  50% { transform: perspective(900px) rotateY(-6deg) translateZ(32px) translateY(-10px); }
+}
+
+/* Homepage 3D popout scene */
+.home-3d-scene {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.home-3d-overlay {
+  background: linear-gradient(135deg, rgba(0, 58, 102, 0.88) 0%, rgba(0, 58, 102, 0.55) 50%, rgba(224, 36, 84, 0.35) 100%);
+}
+
+.home-3d-hero-card {
+  max-width: 760px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+}
+
+.home-3d-float {
+  position: absolute;
+  z-index: 2;
+  width: 190px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 58, 102, 0.12);
+  box-shadow: 0 20px 45px rgba(0, 58, 102, 0.25);
+  cursor: default;
+  display: none;
+}
+
+@media (min-width: 992px) {
+  .home-3d-float { display: block; }
+  .home-3d-float-left {
+    left: 4%;
+    top: 22%;
+    transform: perspective(900px) rotateY(12deg) translateZ(30px);
+  }
+  .home-3d-float-right {
+    right: 4%;
+    top: 18%;
+    transform: perspective(900px) rotateY(-12deg) translateZ(36px);
+    animation-delay: 1.5s;
+  }
+}
+
+.home-3d-float img {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.home-3d-float span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #003A66;
+}
+
+.home-3d-showcase {
+  background: linear-gradient(180deg, #F0F5FB 0%, #fff 100%);
+}
+
+.home-3d-showcase-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  perspective: 1200px;
+}
+
+@media (min-width: 768px) {
+  .home-3d-showcase-grid {
+    grid-template-columns: repeat(3, 1fr);
+    align-items: end;
+  }
+  .home-3d-preview-featured {
+    transform: perspective(900px) rotateX(3deg) translateY(-12px) translateZ(24px);
+  }
+}
+
+.home-3d-preview {
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(0, 58, 102, 0.1);
+  cursor: pointer;
+  box-shadow: 0 12px 32px rgba(0, 58, 102, 0.1);
+}
+
+.home-3d-preview-img {
+  height: 160px;
+  background-size: cover;
+  background-position: center;
+}
+
+.home-3d-preview-body {
+  padding: 1.25rem;
+}
+
+.home-3d-preview-body h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #003A66;
+  margin: 0.5rem 0;
+}
+
+.home-3d-preview-body p {
+  font-size: 0.8125rem;
+  color: #7a8a9e;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.home-3d-preview-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #E02454;
+  background: rgba(224, 36, 84, 0.08);
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+}
+
+.home-3d-preview:hover {
+  transform: perspective(900px) rotateX(2deg) translateY(-10px) translateZ(28px) !important;
+  box-shadow:
+    0 28px 60px rgba(0, 58, 102, 0.2),
+    0 0 35px rgba(224, 36, 84, 0.18) !important;
+}
+
+.home-3d-testimonial {
+  padding: 1.5rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(0, 58, 102, 0.1);
+}
+
+.home-3d-avatar-pop {
+  box-shadow: 0 12px 28px rgba(0, 58, 102, 0.2);
+  border: 3px solid #fff;
+}
+
+.home-3d-stats .counter.popout-3d:hover {
+  transform: perspective(900px) rotateX(4deg) translateY(-10px) translateZ(20px);
 }
 
 /* ============================================================

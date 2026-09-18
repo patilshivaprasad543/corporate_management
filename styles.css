@@ -1453,7 +1453,7 @@ header .rounded-xl.bg-gradient-to-br {
 .chat-hub-sub { font-size: 9px; color: #64748b; }
 .chat-hub-unread {
   min-width: 18px; height: 18px; border-radius: 9999px; padding: 0 5px;
-  background: #10b981; color: #fff; font-size: 10px; font-weight: 800;
+  background: #E02454; color: #fff; font-size: 10px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
 }
 .wa-msg-row { display: flex; gap: 6px; margin-bottom: 4px; }
