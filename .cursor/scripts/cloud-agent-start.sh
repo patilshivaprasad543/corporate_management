@@ -3,7 +3,8 @@ set -euo pipefail
 
 cd /workspace
 
-export DB_URL='jdbc:h2:mem:corporate_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL'
+export DB_URL='jdbc:h2:file:/workspace/data/corporate_db;MODE=MySQL;AUTO_RECONNECT=TRUE'
+export H2_CONSOLE_ENABLED=true
 export SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver
 export SPRING_DATASOURCE_USERNAME=sa
 export SPRING_DATASOURCE_PASSWORD=

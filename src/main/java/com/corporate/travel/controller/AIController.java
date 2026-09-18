@@ -35,4 +35,11 @@ public class AIController {
         return ResponseEntity.ok(ApiResponse.ok(optimizerService.generateOptimization(), "Trip optimization proposal generated"));
     }
 
+    @PostMapping("/policy-check")
+    @Operation(summary = "AI policy compliance check for a travel query")
+    public ResponseEntity<ApiResponse<AiDto.ChatQueryResponse>> policyCheck(@RequestBody AiDto.ChatQueryRequest request) {
+        String msg = request != null && request.getMessage() != null ? request.getMessage() : "Check policy for Delhi trip under 30000";
+        return ResponseEntity.ok(ApiResponse.ok(assistantService.processQuery(msg), "Policy check complete"));
+    }
+
 }

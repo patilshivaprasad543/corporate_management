@@ -66,11 +66,31 @@ public class AITravelAssistantService {
                     .build();
         }
 
-        if (lower.contains("policy") || lower.contains("limit") || lower.contains("allowance")) {
+        if (lower.contains("policy") || lower.contains("limit") || lower.contains("allowance") || lower.contains("compliant")) {
             return AiDto.ChatQueryResponse.builder()
                     .intent("POLICY_INQUIRY")
                     .response("Corporate Travel Policy Summary:\\n• Domestic Flights: Cap ₹15,000 (Economy Class mandatory unless Director level)\\n• Hotels: Cap ₹6,000/night (Preferred partners: Taj, Marriott, Lemon Tree)\\n• Daily Meal Allowance: ₹2,000\\n• Daily Cab Allowance: ₹1,500\\n• Advance Booking: Minimum 7 days prior to departure.")
                     .policyAdvice("All expenses within these tiers are auto-routed for expedited 1-click approval.")
+                    .optimizationTips(List.of("Book 7+ days ahead for best corporate rates", "Use preferred hotel partners for auto-approval", "Combine flight + hotel in one request to save 12%"))
+                    .build();
+        }
+
+        if (lower.contains("budget") || lower.contains("cost") || lower.contains("estimate")) {
+            return AiDto.ChatQueryResponse.builder()
+                    .intent("COST_ESTIMATE")
+                    .response("Estimated trip cost for a 3-day Delhi business visit: ₹28,400 (flight ₹5,400 + hotel ₹18,000 + meals ₹3,000 + cab ₹2,000). This is within your department wallet remaining balance.")
+                    .policyAdvice("Compliant with domestic cap ₹30,000 per trip.")
+                    .estimatedSavings(BigDecimal.valueOf(3200))
+                    .carbonReductionKg(BigDecimal.valueOf(18.5))
+                    .build();
+        }
+
+        if (lower.contains("carbon") || lower.contains("co2") || lower.contains("green")) {
+            return AiDto.ChatQueryResponse.builder()
+                    .intent("SUSTAINABILITY")
+                    .response("Your recommended route saves 142.5 kg CO₂ vs standard fare by choosing a direct flight and corporate hotel shuttle instead of rental car.")
+                    .policyAdvice("ESG dashboard tracks department carbon budgets quarterly.")
+                    .carbonReductionKg(BigDecimal.valueOf(142.5))
                     .build();
         }
 

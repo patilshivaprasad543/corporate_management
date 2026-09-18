@@ -11,4 +11,6 @@ import java.util.Optional;
 public interface ChatConversationRepository extends JpaRepository<ChatConversation, Long> {
     Optional<ChatConversation> findByRoomId(String roomId);
     List<ChatConversation> findByUserIdOrderByCreatedAtDesc(Long userId);
+    Optional<ChatConversation> findFirstByUserIdAndConversationTypeAndClosedFalseOrderByCreatedAtDesc(
+            Long userId, String conversationType);
 }

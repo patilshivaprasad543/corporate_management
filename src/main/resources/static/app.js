@@ -13,20 +13,18 @@ const STATE = {
   currencySymbol: '₹',
   exchangeRates: { INR: 1, USD: 0.012, EUR: 0.011, GBP: 0.0095 },
   isPersonalMode: false,
-  notifications: [
-    { id: 1, title: 'Travel Request Approved', desc: 'Request TR-1082 (Delhi Summit) approved by Line Manager & Finance.', type: 'APPROVED', time: '10m ago' },
-    { id: 2, title: 'Booking Confirmed - PNR683921', desc: 'Air India AI-839 e-ticket issued for Delhi departure.', type: 'BOOKING', time: '1h ago' },
-    { id: 3, title: 'Transit Advisory in Paris', desc: 'Regional rail strike alert active for Paris business travel.', type: 'ALERT', time: '2h ago' }
-  ],
+  notifications: [],
   requests: [],
   bookings: [],
   expenses: [],
   riskAlerts: [],
   auditLogs: [],
   chatConversation: null,
-  analyticsCache: null,
+  chatHubs: [],
+  chatStomp: null,
   splashDismissed: localStorage.getItem('corporate_splash_seen') === 'true',
   chatChannel: 'SUPPORT',
+  emailNotificationsEnabled: localStorage.getItem('corporate_email_notif') !== 'false',
   requestWizardStep: 1,
   approvalFilter: 'travel',
   fabOpen: false,
@@ -35,19 +33,21 @@ const STATE = {
 
 // Realistic travel imagery (Unsplash URLs used by backend seed/search + local workflow reference)
 const WORKFLOW_IMAGES = {
-  splash: 'https://images.unsplash.com/photo-1436491865331-9a61a109fc08?w=1920&auto=format&fit=crop&q=80',
-  login: 'https://images.unsplash.com/photo-1436491865331-9a61a109fc08?w=1400&auto=format&fit=crop&q=80',
+  splash: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1920&auto=format&fit=crop&q=85',
+  login: 'https://images.unsplash.com/photo-1526778548025-fa2f288cd84f?w=1400&auto=format&fit=crop&q=85',
   workflowReference: '/assets/workflow-reference.jpg',
-  orgLogo: 'https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=200&auto=format&fit=crop&q=80',
-  employeeBanner: 'https://images.unsplash.com/photo-1464037866551-637ca0748ace?w=1200&auto=format&fit=crop&q=80',
-  flightCard: 'https://images.unsplash.com/photo-1436491865331-9a61a109fc08?w=480&auto=format&fit=crop&q=80',
-  dashboardTrip: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=900&auto=format&fit=crop&q=80',
-  hotelFallback: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=80',
+  orgLogo: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200&auto=format&fit=crop&q=85',
+  employeeBanner: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&auto=format&fit=crop&q=85',
+  flightCard: 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?w=480&auto=format&fit=crop&q=85',
+  dashboardTrip: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=900&auto=format&fit=crop&q=85',
+  hotelFallback: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=85',
+  airport: 'https://images.unsplash.com/photo-1436491865331-9a61a109fc08?w=800&auto=format&fit=crop&q=85',
+  city: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=85',
   roles: {
-    ROLE_EMPLOYEE: 'https://images.unsplash.com/photo-1464037866551-637ca0748ace?w=1200&auto=format&fit=crop&q=80',
-    ROLE_APPROVER: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&auto=format&fit=crop&q=80',
-    ROLE_TRAVEL_MANAGER: 'https://images.unsplash.com/photo-1488085061388-127e7149baa8?w=1200&auto=format&fit=crop&q=80',
-    ROLE_FINANCE: 'https://images.unsplash.com/photo-1554224311-bc0212f2d511?w=1200&auto=format&fit=crop&q=80',
+    ROLE_EMPLOYEE: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&auto=format&fit=crop&q=85',
+    ROLE_APPROVER: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&auto=format&fit=crop&q=85',
+    ROLE_TRAVEL_MANAGER: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&auto=format&fit=crop&q=85',
+    ROLE_FINANCE: 'https://images.unsplash.com/photo-1554224311-bc0212f2d511?w=1200&auto=format&fit=crop&q=85',
     ROLE_COMPANY_ADMIN: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&auto=format&fit=crop&q=80',
     ROLE_SUPER_ADMIN: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80',
     ROLE_HR: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1200&auto=format&fit=crop&q=80',
@@ -428,6 +428,7 @@ async function fetchInitialData() {
       STATE.notifications = notifs.data.map(mapNotification);
       updateNotificationBadge();
     }
+    connectNotificationWebSocket();
   } catch (err) {
     console.warn('Initial data preload error:', err);
   }
@@ -1824,6 +1825,9 @@ function loadSearchTab() {
         <h1 class="text-2xl font-extrabold text-white tracking-tight">Corporate Travel Search & Booking Desk</h1>
         <p class="text-xs text-slate-400 mt-1">Search flights, hotels, and ground transport with corporate negotiated discounts and instant PNR issuance.</p>
       </div>
+      <button onclick="runAiPolicyCheck()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600/20 border border-violet-500/40 text-violet-200 font-bold text-xs hover:bg-violet-600/30 transition">
+        <i data-lucide="sparkles" class="w-4 h-4"></i> AI Policy Check
+      </button>
     </div>
 
     <!-- Search Controls Card -->
@@ -1908,7 +1912,7 @@ async function executeFlightSearch() {
   }
 
   container.innerHTML = flights.map(f => `
-    <div class="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition overflow-hidden">
+    <div class="glass-panel popout-3d p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition overflow-hidden">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="flex items-center gap-4">
           <div class="search-result-photo shrink-0" style="background-image: url('${WORKFLOW_IMAGES.flightCard}')"></div>
@@ -2609,8 +2613,14 @@ async function loadItineraryTab() {
         <p class="text-xs text-slate-400 mt-1">Live bookings from <code class="text-indigo-300">GET /api/bookings/my</code> — flights, transfers, hotels, and meetings.</p>
       </div>
       <div class="flex items-center gap-3">
+        <button onclick="downloadItineraryPdf()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-800 hover:bg-dark-700 border border-slate-700 text-slate-200 font-bold text-xs transition">
+          <i data-lucide="file-down" class="w-4 h-4"></i> PDF Itinerary
+        </button>
+        <button onclick="downloadBoardingPassPdf()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-800 hover:bg-dark-700 border border-slate-700 text-slate-200 font-bold text-xs transition">
+          <i data-lucide="ticket" class="w-4 h-4"></i> PDF Boarding Pass
+        </button>
         <button onclick="openBoardingPassModal()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition">
-          <i data-lucide="ticket" class="w-4 h-4"></i> View Boarding Pass
+          <i data-lucide="smartphone" class="w-4 h-4"></i> Wallet View
         </button>
         <button onclick="goToFlowStep(5)" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition">
           <span>Start Trip & Duty of Care</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
@@ -2628,6 +2638,7 @@ async function loadItineraryTab() {
   const res = await apiFetch('/api/bookings/my');
   const bookings = (res && res.data) ? res.data : STATE.bookings;
   const active = bookings && bookings.length > 0 ? bookings[0] : null;
+  STATE.activeBookingId = active ? active.id : null;
   const container = document.getElementById('itineraryContainer');
 
   if (!container) return;
@@ -2645,7 +2656,7 @@ async function loadItineraryTab() {
   }
 
   container.innerHTML = `
-    <div class="border-b border-slate-800 pb-4 mb-6 flex items-center justify-between">
+    <div class="popout-3d border-b border-slate-800 pb-4 mb-6 flex items-center justify-between">
       <div>
         <h2 class="text-lg font-bold text-white">Trip: ${active.tripName || active.bookingReference || 'Corporate Business Trip'}</h2>
         <p class="text-xs text-indigo-400 font-semibold mt-0.5">PNR: ${active.pnrNumber || 'PNR683921'} • E-Ticket: ${active.eTicketNumber || 'ETK-098-8472910'} • Ref: ${active.bookingReference || 'BK-0001'}</p>
@@ -3262,9 +3273,9 @@ async function loadAnalyticsTab() {
   safeCreateIcons();
 
   const res = await apiFetch('/api/analytics/dashboard');
-  STATE.analyticsCache = (res && res.data) ? res.data : null;
-  renderAnalyticsSummaryCards(STATE.analyticsCache);
-  setTimeout(() => renderCharts(STATE.analyticsCache), 100);
+  const analyticsData = (res && res.data) ? res.data : null;
+  renderAnalyticsSummaryCards(analyticsData);
+  setTimeout(() => renderCharts(analyticsData), 100);
 }
 
 function renderAnalyticsSummaryCards(data) {
@@ -3365,21 +3376,23 @@ function renderCharts(analyticsData) {
 }
 
 function exportAnalyticsCsv() {
-  const data = STATE.analyticsCache;
-  const trends = (data && data.monthlyTrends) ? data.monthlyTrends : [];
-  let csv = 'Month,FlightSpend,HotelSpend,TransportSpend,TotalSpend\n';
-  if (trends.length) {
-    csv += trends.map(t => `${t.month},${t.flightSpend},${t.hotelSpend},${t.transportSpend},${t.totalSpend}`).join('\n');
-  } else {
-    csv += 'Jan,120000,80000,25000,225000\nFeb,145000,95000,30000,270000';
-  }
-  const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csv);
-  const link = document.createElement('a');
-  link.setAttribute('href', encodedUri);
-  link.setAttribute('download', 'corporate_travel_spend_report.csv');
-  document.body.appendChild(link);
-  link.click();
-  showToast('Finance CSV report downloaded successfully!');
+  apiFetch('/api/analytics/dashboard').then(res => {
+    const data = (res && res.data) ? res.data : null;
+    const trends = (data && data.monthlyTrends) ? data.monthlyTrends : [];
+    let csv = 'Month,FlightSpend,HotelSpend,TransportSpend,TotalSpend\n';
+    if (trends.length) {
+      csv += trends.map(t => `${t.month},${t.flightSpend},${t.hotelSpend},${t.transportSpend},${t.totalSpend}`).join('\n');
+    } else {
+      csv += 'Jan,120000,80000,25000,225000\nFeb,145000,95000,30000,270000';
+    }
+    const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csv);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'corporate_travel_spend_report.csv');
+    document.body.appendChild(link);
+    link.click();
+    showToast('Finance CSV report downloaded successfully!');
+  });
 }
 
 // =========================================================================
@@ -3410,7 +3423,21 @@ function loadSettingsTab() {
         </div>
       </div>
 
-      <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+      <div class="glass-panel popout-3d p-6 rounded-2xl border border-slate-800">
+        <h3 class="font-extrabold text-sm text-white mb-4">Notification & Email Preferences</h3>
+        <div class="space-y-3 text-xs">
+          <label class="flex items-center justify-between p-3 rounded-xl bg-dark-900 border border-slate-800 cursor-pointer">
+            <span><strong class="text-white block">Email travel alerts</strong><span class="text-slate-400 text-[11px]">Booking confirmations, approvals, reimbursements (SMTP demo logs when disabled)</span></span>
+            <input type="checkbox" id="emailNotifToggle" ${STATE.emailNotificationsEnabled ? 'checked' : ''} onchange="toggleEmailNotifications(this.checked)" class="accent-brand-500 w-4 h-4">
+          </label>
+          <label class="flex items-center justify-between p-3 rounded-xl bg-dark-900 border border-slate-800 cursor-pointer">
+            <span><strong class="text-white block">In-app real-time alerts</strong><span class="text-slate-400 text-[11px]">WebSocket push for bookings and approvals</span></span>
+            <input type="checkbox" checked disabled class="accent-brand-500 w-4 h-4 opacity-60">
+          </label>
+        </div>
+      </div>
+
+      <div class="glass-panel popout-3d p-6 rounded-2xl border border-slate-800">
         <h3 class="font-extrabold text-sm text-white mb-4">Preferred Corporate Vendors</h3>
         <div class="space-y-3 text-xs">
           <div class="p-3 rounded-xl bg-dark-900 border border-slate-800 flex justify-between items-center">
@@ -3621,18 +3648,106 @@ async function toggleLiveChatDrawer() {
   const opening = drawer.classList.contains('hidden');
   drawer.classList.toggle('hidden');
   if (opening && STATE.isAuthenticated) {
+    await loadChatHubs();
     await loadChatConversation();
   }
   safeCreateIcons();
 }
 
+async function loadChatHubs() {
+  const sidebar = document.getElementById('chatHubList');
+  if (!sidebar) return;
+  const res = await apiFetch('/api/chat/hubs');
+  STATE.chatHubs = (res && res.data) ? res.data : [];
+  sidebar.innerHTML = STATE.chatHubs.map(hub => `
+    <button type="button" onclick="switchChatChannel('${hub.type}')" class="chat-hub-item ${STATE.chatChannel === hub.type ? 'active' : ''}" data-hub="${hub.type}">
+      <div class="chat-hub-avatar">${hub.type.charAt(0)}</div>
+      <div class="chat-hub-meta">
+        <div class="chat-hub-title">${hub.label.split('—')[0].trim()}</div>
+        <div class="chat-hub-sub">${hub.type === 'SUPPORT' ? '24/7 Travel Care' : hub.type === 'HR' ? 'HR & Duty of Care' : 'Line Manager'}</div>
+      </div>
+      ${Number(hub.unreadCount) > 0 ? `<span class="chat-hub-unread">${hub.unreadCount}</span>` : ''}
+    </button>
+  `).join('');
+}
+
 async function switchChatChannel(channel) {
+  disconnectChatWebSocket();
   STATE.chatChannel = channel;
   STATE.chatConversation = null;
   document.querySelectorAll('.chat-channel-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.channel === channel);
   });
+  await loadChatHubs();
   await loadChatConversation();
+}
+
+function formatChatTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderChatMessages(messages) {
+  const box = document.getElementById('chatMessagesBox');
+  if (!box) return;
+  const list = Array.isArray(messages) ? messages : [];
+  if (list.length === 0) {
+    box.innerHTML = `<div class="wa-msg-row received"><div class="wa-avatar">A</div><div class="wa-bubble received"><div>Start a conversation in this hub.</div></div></div>`;
+    return;
+  }
+  box.innerHTML = list.map(m => {
+    const isUser = m.senderType === 'USER';
+    const time = formatChatTime(m.createdAt);
+    if (isUser) {
+      return `<div class="wa-msg-row sent"><div class="wa-bubble sent"><div>${escapeHtml(m.message)}</div><span class="wa-time">${time}</span></div></div>`;
+    }
+    return `<div class="wa-msg-row received"><div class="wa-avatar">${(STATE.chatChannel || 'S').charAt(0)}</div><div class="wa-bubble received"><div>${escapeHtml(m.message)}</div><span class="wa-time">${time}</span></div></div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function escapeHtml(text) {
+  return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function appendChatMessage(m) {
+  const box = document.getElementById('chatMessagesBox');
+  if (!box || !m) return;
+  const isUser = m.senderType === 'USER';
+  const time = formatChatTime(m.createdAt || new Date().toISOString());
+  const html = isUser
+    ? `<div class="wa-msg-row sent"><div class="wa-bubble sent"><div>${escapeHtml(m.message)}</div><span class="wa-time">${time}</span></div></div>`
+    : `<div class="wa-msg-row received"><div class="wa-avatar">${(STATE.chatChannel || 'S').charAt(0)}</div><div class="wa-bubble received"><div>${escapeHtml(m.message)}</div><span class="wa-time">${time}</span></div></div>`;
+  box.insertAdjacentHTML('beforeend', html);
+  box.scrollTop = box.scrollHeight;
+}
+
+function connectChatWebSocket(roomId) {
+  if (typeof SockJS === 'undefined' || typeof Stomp === 'undefined' || !roomId) return;
+  disconnectChatWebSocket();
+  try {
+    const socket = new SockJS('/ws');
+    STATE.chatStomp = Stomp.over(socket);
+    STATE.chatStomp.debug = () => {};
+    STATE.chatStomp.connect({}, () => {
+      STATE.chatStomp.subscribe(`/topic/messages/${roomId}`, (frame) => {
+        try {
+          const msg = JSON.parse(frame.body);
+          if (msg.senderType !== 'USER') appendChatMessage(msg);
+        } catch (e) { /* ignore */ }
+      });
+    });
+  } catch (e) {
+    console.warn('Chat WebSocket unavailable', e);
+  }
+}
+
+function disconnectChatWebSocket() {
+  if (STATE.chatStomp && STATE.chatStomp.connected) {
+    try { STATE.chatStomp.disconnect(); } catch (e) { /* ignore */ }
+  }
+  STATE.chatStomp = null;
 }
 
 async function loadChatConversation() {
@@ -3643,35 +3758,18 @@ async function loadChatConversation() {
   if (!convRes || !convRes.data) return;
 
   STATE.chatConversation = convRes.data;
-  const msgRes = await apiFetch(`/api/chat/messages/${convRes.data.id}`);
-  const messages = (msgRes && msgRes.data) ? msgRes.data : [];
-
-  if (messages.length === 0) {
-    box.innerHTML = `
-      <div class="flex gap-2">
-        <div class="h-6 w-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold">CS</div>
-        <div class="bg-dark-700 p-2.5 rounded-xl rounded-tl-none max-w-[80%] text-slate-200">
-          Hello ${STATE.currentUser.name.split(' ')[0]}! How can our 24/7 travel care team assist you today?
-        </div>
-      </div>
-    `;
-    return;
+  const header = document.getElementById('chatActiveHubTitle');
+  if (header) {
+    const hub = STATE.chatHubs.find(h => h.type === STATE.chatChannel);
+    header.textContent = hub ? hub.label : 'Corporate Chat';
   }
 
-  box.innerHTML = messages.map(m => {
-    const isUser = m.senderType === 'USER';
-    return isUser ? `
-      <div class="flex gap-2 justify-end">
-        <div class="bg-indigo-600 p-2.5 rounded-xl rounded-tr-none max-w-[80%] text-white">${m.message}</div>
-      </div>
-    ` : `
-      <div class="flex gap-2">
-        <div class="h-6 w-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold">CS</div>
-        <div class="bg-dark-700 p-2.5 rounded-xl rounded-tl-none max-w-[80%] text-slate-200">${m.message}</div>
-      </div>
-    `;
-  }).join('');
-  box.scrollTop = box.scrollHeight;
+  const msgRes = await apiFetch(`/api/chat/messages/${convRes.data.id}`);
+  const messages = (msgRes && msgRes.data) ? msgRes.data : [];
+  renderChatMessages(messages);
+  connectChatWebSocket(convRes.data.roomId);
+  await apiFetch(`/api/chat/messages/${convRes.data.id}/read`, { method: 'POST' });
+  await loadChatHubs();
 }
 
 async function sendChatMessage() {
@@ -3681,31 +3779,86 @@ async function sendChatMessage() {
 
   const msg = input.value.trim();
   input.value = '';
+  appendChatMessage({ senderType: 'USER', message: msg, createdAt: new Date().toISOString() });
 
-  box.innerHTML += `
-    <div class="flex gap-2 justify-end">
-      <div class="bg-indigo-600 p-2.5 rounded-xl rounded-tr-none max-w-[80%] text-white">
-        ${msg}
-      </div>
-    </div>
-  `;
-  box.scrollTop = box.scrollHeight;
-
-  if (!STATE.chatConversation) {
-    await loadChatConversation();
-  }
+  if (!STATE.chatConversation) await loadChatConversation();
   if (!STATE.chatConversation) return;
 
-  const roomId = STATE.chatConversation.roomId;
-  await apiFetch(`/api/chat/messages?roomId=${encodeURIComponent(roomId)}&senderType=USER`, {
+  await apiFetch(`/api/chat/messages?roomId=${encodeURIComponent(STATE.chatConversation.roomId)}&senderType=USER`, {
     method: 'POST',
     body: JSON.stringify(msg),
     headers: { 'Content-Type': 'application/json' }
   });
 
   setTimeout(async () => {
-    await loadChatConversation();
-  }, 800);
+    const msgRes = await apiFetch(`/api/chat/messages/${STATE.chatConversation.id}`);
+    const messages = (msgRes && msgRes.data) ? msgRes.data : [];
+    renderChatMessages(messages);
+    await loadChatHubs();
+  }, 600);
+}
+
+function connectNotificationWebSocket() {
+  if (!STATE.token || typeof SockJS === 'undefined' || typeof Stomp === 'undefined') return;
+  try {
+    const socket = new SockJS('/ws');
+    const client = Stomp.over(socket);
+    client.debug = () => {};
+    client.connect({}, () => {
+      const userId = STATE.currentUser.id || 5;
+      client.subscribe(`/topic/alerts/${userId}`, async () => {
+        const res = await apiFetch('/api/notifications');
+        if (res && res.data) {
+          STATE.notifications = res.data.map(mapNotification);
+          updateNotificationBadge();
+        }
+      });
+    });
+  } catch (e) { /* optional */ }
+}
+
+async function downloadPdf(url, filename) {
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${STATE.token}`, Accept: 'application/pdf' } });
+    if (!res.ok) throw new Error('Download failed');
+    const blob = await res.blob();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    showToast(`Downloaded ${filename}`, 'success');
+  } catch (e) {
+    showToast('PDF download failed. Complete a booking first.', 'warning');
+  }
+}
+
+function downloadBoardingPassPdf() {
+  if (!STATE.activeBookingId) { showToast('No active booking for PDF.', 'warning'); return; }
+  downloadPdf(`/api/documents/bookings/${STATE.activeBookingId}/boarding-pass.pdf`, `boarding-pass-${STATE.activeBookingId}.pdf`);
+}
+
+function downloadItineraryPdf() {
+  if (!STATE.activeBookingId) { showToast('No active booking for PDF.', 'warning'); return; }
+  downloadPdf(`/api/documents/bookings/${STATE.activeBookingId}/itinerary.pdf`, `itinerary-${STATE.activeBookingId}.pdf`);
+}
+
+async function runAiPolicyCheck() {
+  const origin = document.getElementById('searchOrigin')?.value || 'Hyderabad';
+  const dest = document.getElementById('searchDest')?.value || 'Delhi';
+  const res = await apiFetch('/api/ai/policy-check', {
+    method: 'POST',
+    body: { message: `Check policy compliance for trip ${origin} to ${dest} under 30000 INR` }
+  });
+  const data = (res && res.data) ? res.data : null;
+  if (!data) { showToast('AI policy check unavailable.', 'warning'); return; }
+  showToast(data.policyAdvice || data.response?.substring(0, 120), 'info');
+}
+
+function toggleEmailNotifications(enabled) {
+  STATE.emailNotificationsEnabled = enabled;
+  localStorage.setItem('corporate_email_notif', enabled ? 'true' : 'false');
+  showToast(enabled ? 'Email notifications enabled (demo logs when SMTP off).' : 'Email notifications disabled.', 'info');
 }
 
 function openAiModal() {
@@ -3770,6 +3923,11 @@ window.openProfileSheet = openProfileSheet;
 window.closeProfileSheet = closeProfileSheet;
 window.handleMobileProfileTap = handleMobileProfileTap;
 window.handleNotificationClick = handleNotificationClick;
+window.downloadBoardingPassPdf = downloadBoardingPassPdf;
+window.downloadItineraryPdf = downloadItineraryPdf;
+window.runAiPolicyCheck = runAiPolicyCheck;
+window.toggleEmailNotifications = toggleEmailNotifications;
+window.loadChatHubs = loadChatHubs;
 window.renderRequestWizardModal = renderRequestWizardModal;
 window.openAiModal = openAiModal;
 window.closeModal = closeModal;

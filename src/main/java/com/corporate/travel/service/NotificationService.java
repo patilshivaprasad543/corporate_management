@@ -18,16 +18,18 @@ import java.util.List;
 public class NotificationService {
     private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
-    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository, SimpMessagingTemplate messagingTemplate) {
+    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository, SimpMessagingTemplate messagingTemplate, EmailService emailService) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
         this.messagingTemplate = messagingTemplate;
+        this.emailService = emailService;
     }
 
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final EmailService emailService;
 
     @Transactional
     public Notification sendNotification(Long userId, String title, String message, NotificationType type, String refLink) {
@@ -49,7 +51,32 @@ public class NotificationService {
             messagingTemplate.convertAndSend("/topic/alerts/" + userId, saved);
         } catch (Exception ignored) {}
 
+        try {
+            emailService.sendTravelNotification(user, title, message, type);
+        } catch (Exception ex) {
+            log.warn("Email dispatch skipped for user {}: {}", userId, ex.getMessage());
+        }
+
         return saved;
+    }
+
+    @Transactional
+    public Notification markAsRead(Long notificationId, Long userId) {
+        return notificationRepository.findById(notificationId)
+                .filter(n -> n.getUser() != null && n.getUser().getId().equals(userId))
+                .map(n -> {
+                    n.setRead(true);
+                    return notificationRepository.save(n);
+                })
+                .orElse(null);
+    }
+
+    @Transactional
+    public int markAllRead(Long userId) {
+        List<Notification> unread = notificationRepository.findByUserIdAndReadFalseOrderByCreatedAtDesc(userId);
+        unread.forEach(n -> n.setRead(true));
+        notificationRepository.saveAll(unread);
+        return unread.size();
     }
 
     @Transactional(readOnly = true)

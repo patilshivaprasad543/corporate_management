@@ -18,6 +18,7 @@ PREVIEW_STEPS = [
     ("preview_06_admin_command_center", "dashboard", "ROLE_COMPANY_ADMIN", "admin@acmetech.com", "Admin command center", None),
     ("preview_07_mobile_bottom_nav", "dashboard", "ROLE_EMPLOYEE", "traveler@acmetech.com", "Mobile bottom nav", None, {"width": 390, "height": 844}),
     ("preview_08_analytics", "analytics", "ROLE_SUPER_ADMIN", "superadmin@corporatetravel.com", "Executive analytics", None),
+    ("preview_09_whatsapp_chat", "dashboard", "ROLE_EMPLOYEE", "traveler@acmetech.com", "WhatsApp multihub chat", "toggleLiveChatDrawer()"),
 ]
 
 

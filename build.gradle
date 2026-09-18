@@ -32,6 +32,10 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+	// PDF generation (itinerary, boarding pass, expense reports)
+	implementation 'com.github.librepdf:openpdf:1.3.39'
 
 	// OpenAPI / Swagger UI documentation
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'

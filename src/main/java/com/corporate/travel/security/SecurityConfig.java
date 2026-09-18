@@ -57,7 +57,8 @@ public class SecurityConfig {
                     "/swagger-ui.html",
                     "/api-docs/**",
                     "/api/auth/**",
-                    "/actuator/health"
+                    "/actuator/health",
+                    "/ws/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/search/**").permitAll()
                 .requestMatchers("/api/approvals/**").hasAnyAuthority("ROLE_APPROVER", "ROLE_FINANCE", "ROLE_COMPANY_ADMIN", "ROLE_SUPER_ADMIN")

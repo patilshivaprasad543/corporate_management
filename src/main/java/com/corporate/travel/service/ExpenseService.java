@@ -24,13 +24,14 @@ import java.util.stream.Collectors;
 public class ExpenseService {
     private static final Logger log = LoggerFactory.getLogger(ExpenseService.class);
 
-    public ExpenseService(ExpenseReportRepository expenseReportRepository, UserRepository userRepository, TravelRequestRepository travelRequestRepository, TravelWalletRepository walletRepository, NotificationService notificationService, AuditService auditService) {
+    public ExpenseService(ExpenseReportRepository expenseReportRepository, UserRepository userRepository, TravelRequestRepository travelRequestRepository, TravelWalletRepository walletRepository, NotificationService notificationService, AuditService auditService, com.corporate.travel.ai.AIExpenseFraudService aiExpenseFraudService) {
         this.expenseReportRepository = expenseReportRepository;
         this.userRepository = userRepository;
         this.travelRequestRepository = travelRequestRepository;
         this.walletRepository = walletRepository;
         this.notificationService = notificationService;
         this.auditService = auditService;
+        this.aiExpenseFraudService = aiExpenseFraudService;
     }
 
 
@@ -40,6 +41,7 @@ public class ExpenseService {
     private final TravelWalletRepository walletRepository;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    private final com.corporate.travel.ai.AIExpenseFraudService aiExpenseFraudService;
 
     @Transactional
     public ExpenseDto.ReportResponse createExpenseReport(Long userId, ExpenseDto.CreateReportRequest dto) {
@@ -96,6 +98,13 @@ public class ExpenseService {
                         .policyFlagReason(flagReason)
                         .duplicateSuspect(false)
                         .build();
+                List<String> fraudFlags = aiExpenseFraudService.inspectExpense(item);
+                if (!fraudFlags.isEmpty()) {
+                    hasAiFlags = true;
+                    aiNotes.addAll(fraudFlags);
+                    item.setPolicyCompliant(false);
+                    item.setPolicyFlagReason(String.join("; ", fraudFlags));
+                }
                 report.getItems().add(item);
             }
         }

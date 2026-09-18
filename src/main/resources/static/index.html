@@ -344,40 +344,29 @@
     </div>
   </div>
 
-  <!-- Support Chat Drawer -->
-  <div id="chatDrawer" class="hidden fixed bottom-24 right-6 w-96 bg-dark-800 border border-slate-700 rounded-2xl shadow-2xl z-50 flex flex-col h-[520px]">
-    <div class="p-4 bg-gradient-to-r from-indigo-900 to-slate-900 rounded-t-2xl border-b border-slate-700">
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-2.5">
-          <div class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></div>
+  <!-- WhatsApp-style Multi-Hub Chat -->
+  <div id="chatDrawer" class="hidden whatsapp-chat-drawer fixed bottom-24 right-6 w-[min(100%,720px)] bg-dark-900 border border-slate-700 rounded-2xl shadow-2xl z-50 flex flex-col h-[560px] overflow-hidden">
+    <div class="whatsapp-chat-layout flex flex-1 min-h-0">
+      <aside class="chat-hub-sidebar w-36 md:w-44 border-r border-slate-800 bg-dark-950/90 shrink-0 overflow-y-auto" id="chatHubList"></aside>
+      <div class="chat-main-panel flex flex-col flex-1 min-w-0">
+        <div class="p-3 bg-gradient-to-r from-emerald-900/40 to-dark-900 border-b border-slate-700 flex items-center justify-between">
           <div>
-            <h4 class="font-bold text-sm text-white">Multi-Hub Corporate Chat</h4>
-            <p class="text-[10px] text-indigo-300">Live support & team channels</p>
+            <h4 id="chatActiveHubTitle" class="font-bold text-sm text-white">Corporate Chat</h4>
+            <p class="text-[10px] text-emerald-300">WhatsApp-style multihub • Live WebSocket</p>
           </div>
+          <button onclick="toggleLiveChatDrawer()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
         </div>
-        <button onclick="toggleLiveChatDrawer()" class="text-slate-400 hover:text-white">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-      </div>
-      <div class="chat-channel-tabs flex gap-1">
-        <button type="button" class="chat-channel-tab active" data-channel="SUPPORT" onclick="switchChatChannel('SUPPORT')">Support</button>
-        <button type="button" class="chat-channel-tab" data-channel="HR" onclick="switchChatChannel('HR')">HR</button>
-        <button type="button" class="chat-channel-tab" data-channel="MANAGER" onclick="switchChatChannel('MANAGER')">Manager</button>
-      </div>
-    </div>
-    <div id="chatMessagesBox" class="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
-      <div class="flex gap-2">
-        <div class="h-6 w-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold">CS</div>
-        <div class="bg-dark-700 p-2.5 rounded-xl rounded-tl-none max-w-[80%] text-slate-200">
-          Hello Priya! I see you have an upcoming flight AI-839 to Delhi. How can I assist with your itinerary or corporate hotel booking?
+        <div class="chat-channel-tabs flex gap-1 p-2 border-b border-slate-800 bg-dark-950/50">
+          <button type="button" class="chat-channel-tab active" data-channel="SUPPORT" onclick="switchChatChannel('SUPPORT')">Support</button>
+          <button type="button" class="chat-channel-tab" data-channel="HR" onclick="switchChatChannel('HR')">HR</button>
+          <button type="button" class="chat-channel-tab" data-channel="MANAGER" onclick="switchChatChannel('MANAGER')">Manager</button>
+        </div>
+        <div id="chatMessagesBox" class="wa-chat-thread flex-1 overflow-y-auto p-3 space-y-2"></div>
+        <div class="p-3 border-t border-slate-700 flex items-center gap-2 bg-dark-900/95">
+          <input id="chatInputText" type="text" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendChatMessage()" class="flex-1 bg-dark-800 text-xs text-white border border-slate-700 rounded-full px-4 py-2.5 outline-none focus:border-emerald-500">
+          <button onclick="sendChatMessage()" class="p-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white transition"><i data-lucide="send" class="w-4 h-4"></i></button>
         </div>
       </div>
-    </div>
-    <div class="p-3 border-t border-slate-700 flex items-center gap-2">
-      <input id="chatInputText" type="text" placeholder="Type message..." onkeydown="if(event.key==='Enter') sendChatMessage()" class="flex-1 bg-dark-900 text-xs text-white border border-slate-700 rounded-xl px-3 py-2 outline-none focus:border-indigo-500">
-      <button onclick="sendChatMessage()" class="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition">
-        <i data-lucide="send" class="w-4 h-4"></i>
-      </button>
     </div>
   </div>
 

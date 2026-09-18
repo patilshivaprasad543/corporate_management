@@ -1294,3 +1294,65 @@ header .rounded-xl.bg-gradient-to-br {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* WhatsApp-style multihub chat */
+.whatsapp-chat-drawer { backdrop-filter: blur(12px); }
+.wa-chat-thread {
+  background: linear-gradient(180deg, rgba(10, 12, 26, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%),
+    url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400&auto=format&fit=crop&q=20');
+  background-size: cover;
+  background-blend-mode: overlay;
+}
+.chat-hub-item {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 10px 8px; border: none; background: transparent; text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.04); cursor: pointer; transition: background 0.2s;
+}
+.chat-hub-item:hover, .chat-hub-item.active { background: rgba(16, 185, 129, 0.12); }
+.chat-hub-avatar {
+  width: 36px; height: 36px; border-radius: 9999px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: #fff;
+  background: linear-gradient(135deg, #059669, #10b981);
+}
+.chat-hub-meta { min-width: 0; flex: 1; }
+.chat-hub-title { font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-hub-sub { font-size: 9px; color: #64748b; }
+.chat-hub-unread {
+  min-width: 18px; height: 18px; border-radius: 9999px; padding: 0 5px;
+  background: #10b981; color: #fff; font-size: 10px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.wa-msg-row { display: flex; gap: 6px; margin-bottom: 4px; }
+.wa-msg-row.sent { justify-content: flex-end; }
+.wa-bubble {
+  max-width: 78%; padding: 8px 12px; border-radius: 14px; font-size: 12px; line-height: 1.45;
+  position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.wa-bubble.sent {
+  background: linear-gradient(135deg, #065f46, #047857);
+  color: #ecfdf5; border-bottom-right-radius: 4px;
+}
+.wa-bubble.received {
+  background: rgba(30, 41, 59, 0.95); color: #e2e8f0;
+  border: 1px solid rgba(255,255,255,0.08); border-bottom-left-radius: 4px;
+}
+.wa-time { display: block; font-size: 9px; opacity: 0.65; margin-top: 4px; text-align: right; }
+.wa-avatar {
+  width: 28px; height: 28px; border-radius: 9999px; flex-shrink: 0; align-self: flex-end;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800; color: #fff; background: #6366f1;
+}
+
+/* 3D popout cards (Concur/Navan-style depth) */
+.popout-3d {
+  transform-style: preserve-3d;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+.popout-3d:hover {
+  transform: perspective(900px) rotateX(2deg) translateY(-6px) translateZ(12px);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.45),
+    0 0 30px rgba(0, 123, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}

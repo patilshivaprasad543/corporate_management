@@ -13,5 +13,6 @@ export JAVA_HOME="${JAVA17_HOME}"
 export PATH="${JAVA_HOME}/bin:${PATH}"
 
 cd /workspace
+mkdir -p data
 chmod +x gradlew
 ./gradlew build --no-daemon
