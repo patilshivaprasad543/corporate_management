@@ -85,6 +85,164 @@ const ALL_MODULES = [
   { id: 'audit', label: 'Enterprise Audit Trail', icon: 'shield-check', desc: 'Immutable security log tracking bookings, auth tokens, and financial approvals.' }
 ];
 
+const ROLE_THEMES = {
+  ROLE_EMPLOYEE: {
+    portalName: 'Employee Traveler Portal',
+    shortName: 'Traveler',
+    gradient: 'from-indigo-600 via-blue-600 to-cyan-500',
+    cardGradient: 'from-indigo-500/20 via-blue-500/10 to-cyan-500/10',
+    accent: 'indigo',
+    accentText: 'text-indigo-300',
+    accentBg: 'bg-indigo-500/15',
+    border: 'border-indigo-500/40',
+    glow: 'portal-glow-indigo',
+    icon: 'plane',
+    tagline: 'Search flights, submit requests, and manage your business travel wallet.'
+  },
+  ROLE_APPROVER: {
+    portalName: 'Line Manager Approver Portal',
+    shortName: 'Approver',
+    gradient: 'from-amber-500 via-orange-600 to-rose-500',
+    cardGradient: 'from-amber-500/20 via-orange-500/10 to-rose-500/10',
+    accent: 'amber',
+    accentText: 'text-amber-300',
+    accentBg: 'bg-amber-500/15',
+    border: 'border-amber-500/40',
+    glow: 'portal-glow-amber',
+    icon: 'check-square',
+    tagline: 'Review team travel requests, approve budgets, and enforce policy compliance.'
+  },
+  ROLE_TRAVEL_MANAGER: {
+    portalName: 'Travel Operations Portal',
+    shortName: 'Travel Ops',
+    gradient: 'from-violet-600 via-purple-600 to-fuchsia-500',
+    cardGradient: 'from-violet-500/20 via-purple-500/10 to-fuchsia-500/10',
+    accent: 'violet',
+    accentText: 'text-violet-300',
+    accentBg: 'bg-violet-500/15',
+    border: 'border-violet-500/40',
+    glow: 'portal-glow-violet',
+    icon: 'globe-2',
+    tagline: 'Operate corporate booking desk, monitor active trips, and manage travel spend.'
+  },
+  ROLE_FINANCE: {
+    portalName: 'Finance & Reimbursement Portal',
+    shortName: 'Finance',
+    gradient: 'from-emerald-600 via-teal-600 to-green-500',
+    cardGradient: 'from-emerald-500/20 via-teal-500/10 to-green-500/10',
+    accent: 'emerald',
+    accentText: 'text-emerald-300',
+    accentBg: 'bg-emerald-500/15',
+    border: 'border-emerald-500/40',
+    glow: 'portal-glow-emerald',
+    icon: 'wallet',
+    tagline: 'Audit expense claims, approve reimbursements, and track financial compliance.'
+  },
+  ROLE_COMPANY_ADMIN: {
+    portalName: 'Company Admin Command Center',
+    shortName: 'Admin',
+    gradient: 'from-sky-600 via-blue-700 to-indigo-700',
+    cardGradient: 'from-sky-500/20 via-blue-500/10 to-indigo-500/10',
+    accent: 'sky',
+    accentText: 'text-sky-300',
+    accentBg: 'bg-sky-500/15',
+    border: 'border-sky-500/40',
+    glow: 'portal-glow-sky',
+    icon: 'building-2',
+    tagline: 'Configure policies, oversee company travel programs, and manage cost centers.'
+  },
+  ROLE_SUPER_ADMIN: {
+    portalName: 'Platform Super Admin Portal',
+    shortName: 'Super Admin',
+    gradient: 'from-rose-600 via-pink-600 to-purple-600',
+    cardGradient: 'from-rose-500/20 via-pink-500/10 to-purple-500/10',
+    accent: 'rose',
+    accentText: 'text-rose-300',
+    accentBg: 'bg-rose-500/15',
+    border: 'border-rose-500/40',
+    glow: 'portal-glow-rose',
+    icon: 'crown',
+    tagline: 'Multi-tenant platform operations, global analytics, and system configuration.'
+  },
+  ROLE_HR: {
+    portalName: 'HR Travel & Duty of Care Portal',
+    shortName: 'HR',
+    gradient: 'from-pink-600 via-rose-500 to-orange-400',
+    cardGradient: 'from-pink-500/20 via-rose-500/10 to-orange-400/10',
+    accent: 'pink',
+    accentText: 'text-pink-300',
+    accentBg: 'bg-pink-500/15',
+    border: 'border-pink-500/40',
+    glow: 'portal-glow-pink',
+    icon: 'heart-handshake',
+    tagline: 'Monitor employee travel logs, onboarding, and duty-of-care compliance.'
+  },
+  ROLE_VENDOR: {
+    portalName: 'Airline Partner Portal',
+    shortName: 'Vendor',
+    gradient: 'from-orange-500 via-amber-500 to-yellow-400',
+    cardGradient: 'from-orange-500/20 via-amber-500/10 to-yellow-400/10',
+    accent: 'orange',
+    accentText: 'text-orange-300',
+    accentBg: 'bg-orange-500/15',
+    border: 'border-orange-500/40',
+    glow: 'portal-glow-orange',
+    icon: 'building',
+    tagline: 'Manage negotiated inventory, corporate rates, and booking settlements.'
+  },
+  ROLE_SUPPORT: {
+    portalName: '24/7 Traveler Care Portal',
+    shortName: 'Support',
+    gradient: 'from-cyan-600 via-teal-500 to-emerald-500',
+    cardGradient: 'from-cyan-500/20 via-teal-500/10 to-emerald-500/10',
+    accent: 'cyan',
+    accentText: 'text-cyan-300',
+    accentBg: 'bg-cyan-500/15',
+    border: 'border-cyan-500/40',
+    glow: 'portal-glow-cyan',
+    icon: 'headphones',
+    tagline: 'Emergency response, live traveler support, and itinerary assistance.'
+  }
+};
+
+function getRoleTheme(roleKey) {
+  return ROLE_THEMES[roleKey] || ROLE_THEMES.ROLE_EMPLOYEE;
+}
+
+function renderPortalHero(roleKey, compact = false) {
+  const theme = getRoleTheme(roleKey);
+  const user = DEMO_USERS[roleKey] || STATE.currentUser;
+  const padding = compact ? 'p-5' : 'p-6 md:p-8';
+  return `
+    <div class="portal-hero rounded-3xl ${padding} mb-6 relative overflow-hidden border ${theme.border} ${theme.glow}">
+      <div class="absolute inset-0 bg-gradient-to-br ${theme.gradient} opacity-90"></div>
+      <div class="absolute inset-0 portal-hero-pattern opacity-30"></div>
+      <div class="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl"></div>
+      <div class="absolute -left-8 bottom-0 h-32 w-32 rounded-full bg-black/20 blur-2xl"></div>
+      <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        <div class="flex items-start gap-4">
+          <div class="h-16 w-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white font-extrabold text-lg shadow-2xl shrink-0">
+            <i data-lucide="${theme.icon}" class="w-8 h-8"></i>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+              <span class="text-[10px] uppercase tracking-[0.2em] font-bold text-white/70">${theme.shortName} Workspace</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/15 text-white font-bold border border-white/20">RBAC Active</span>
+            </div>
+            <h2 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">${theme.portalName}</h2>
+            <p class="text-sm text-white/80 mt-1 max-w-2xl">${theme.tagline}</p>
+            <p class="text-xs text-white/60 mt-2">${user.name} • ${user.designation}</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2 shrink-0">
+          <span class="px-3 py-1.5 rounded-xl bg-black/20 border border-white/15 text-xs font-bold text-white">${roleKey.replace('ROLE_', '').replace('_', ' ')}</span>
+          <span class="px-3 py-1.5 rounded-xl bg-white/10 border border-white/15 text-xs font-semibold text-white/90">${(ROLE_NAVS[roleKey] || []).length - 1} modules unlocked</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 const ROLE_NAVS = {
   ROLE_EMPLOYEE: [
     { id: 'login-portal', label: '🔐 Login Portal', icon: 'shield-check' },
@@ -280,7 +438,9 @@ function updateTopStripActiveState(tabId) {
     
     // Update role badge in top strip
     if (stripRoleName) {
-      stripRoleName.textContent = `${roleKey.replace('ROLE_', '').replace('_', ' ')} PORTAL`;
+      const theme = getRoleTheme(roleKey);
+      stripRoleName.textContent = `${theme.shortName.toUpperCase()} PORTAL`;
+      stripRoleName.className = `${theme.accentText} tracking-wider shrink-0 mr-1 flex items-center gap-1`;
     }
 
     document.querySelectorAll('.strip-btn').forEach(btn => {
@@ -571,9 +731,16 @@ function updateUserProfileHeader() {
   const logoutBtn = document.getElementById('headerLogoutBtn');
 
   if (STATE.isAuthenticated && STATE.currentUser) {
+    const theme = getRoleTheme(STATE.currentRole || 'ROLE_EMPLOYEE');
     if (nameEl) nameEl.textContent = STATE.currentUser.name;
-    if (roleEl) roleEl.textContent = STATE.currentUser.designation;
-    if (avatarEl) avatarEl.textContent = STATE.currentUser.avatar;
+    if (roleEl) {
+      roleEl.textContent = STATE.currentUser.designation;
+      roleEl.className = `text-[10px] ${theme.accentText} font-semibold`;
+    }
+    if (avatarEl) {
+      avatarEl.textContent = STATE.currentUser.avatar;
+      avatarEl.className = `h-8 w-8 rounded-full bg-gradient-to-br ${theme.gradient} flex items-center justify-center text-white font-bold text-xs shadow-md`;
+    }
     if (roleSel) roleSel.value = STATE.currentRole || 'ROLE_EMPLOYEE';
     if (logoutBtn) logoutBtn.style.display = 'inline-flex';
   } else {
@@ -656,13 +823,17 @@ function updateWalletDisplay() {
 // =========================================================================
 function loadLoginPortalTab() {
   const main = document.getElementById('mainContent');
+  const activeTheme = getRoleTheme(STATE.currentRole || 'ROLE_EMPLOYEE');
   
   main.innerHTML = `
+    ${renderPortalHero(STATE.currentRole || 'ROLE_EMPLOYEE')}
+
     <!-- Dedicated Login & Role Gateway Header -->
-    <div class="glass-panel p-6 rounded-3xl border border-indigo-500/40 glow-indigo relative overflow-hidden mb-6">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="glass-panel p-6 rounded-3xl border ${activeTheme.border} relative overflow-hidden mb-6 portal-card-animate">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl ${activeTheme.cardGradient} rounded-full blur-3xl opacity-60 pointer-events-none"></div>
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
         <div class="flex items-center gap-4">
-          <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center text-white font-extrabold text-2xl shadow-xl shadow-indigo-500/30 shrink-0">
+          <div class="h-14 w-14 rounded-2xl bg-gradient-to-br ${activeTheme.gradient} flex items-center justify-center text-white font-extrabold text-2xl shadow-xl shrink-0">
             <i data-lucide="shield-check" class="w-8 h-8"></i>
           </div>
           <div>
@@ -683,7 +854,7 @@ function loadLoginPortalTab() {
               <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
               <span>${STATE.currentUser.name}</span>
             </div>
-            <span class="text-[10px] text-indigo-300 font-mono">${STATE.currentRole}</span>
+            <span class="text-[10px] ${activeTheme.accentText} font-mono">${STATE.currentRole || 'Not signed in'}</span>
           </div>
         </div>
       </div>
@@ -722,23 +893,25 @@ function loadLoginPortalTab() {
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        ${Object.keys(DEMO_USERS).map(k => {
+        ${Object.keys(DEMO_USERS).map((k, idx) => {
           const u = DEMO_USERS[k];
+          const theme = getRoleTheme(k);
           const isCur = STATE.currentRole === k;
           const roleNavItems = (ROLE_NAVS[k] || []).filter(item => item.id !== 'login-portal');
           return `
-            <div class="p-5 rounded-2xl border transition-all relative ${isCur ? 'bg-gradient-to-b from-indigo-900/40 to-dark-800 border-indigo-500 ring-2 ring-indigo-500/50 shadow-xl' : 'bg-dark-800/90 hover:bg-dark-700/80 border-slate-800 hover:border-slate-600'}">
+            <div class="portal-role-card portal-card-animate p-5 rounded-2xl border transition-all relative ${isCur ? `active bg-gradient-to-b ${theme.cardGradient} ${theme.border} ring-2 ring-white/10 shadow-xl ${theme.glow}` : 'bg-dark-800/90 hover:bg-dark-700/80 border-slate-800 hover:border-slate-600'}" style="animation-delay: ${idx * 40}ms">
+              <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${theme.gradient} rounded-t-2xl"></div>
               <div class="flex items-start justify-between gap-3">
                 <div class="flex items-center gap-3">
-                  <div class="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md shrink-0">
-                    ${u.avatar}
+                  <div class="h-12 w-12 rounded-2xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center text-white font-extrabold text-sm shadow-md shrink-0">
+                    <i data-lucide="${theme.icon}" class="w-5 h-5"></i>
                   </div>
                   <div>
                     <h4 class="text-sm font-extrabold text-white flex items-center gap-2">
                       ${u.name}
                       ${isCur ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[9px] font-bold border border-emerald-500/30">ACTIVE</span>` : ''}
                     </h4>
-                    <p class="text-[11px] text-indigo-300 font-semibold">${u.designation}</p>
+                    <p class="text-[11px] ${theme.accentText} font-semibold">${theme.portalName}</p>
                     <p class="text-[10px] text-slate-400 font-mono mt-0.5">${u.email}</p>
                   </div>
                 </div>
@@ -766,9 +939,9 @@ function loadLoginPortalTab() {
               </div>
 
               <div class="mt-4 pt-3 border-t border-slate-800 flex items-center gap-2">
-                <button onclick="loginAsRole('${k}'); loadLoginPortalTab();" class="flex-1 py-2 rounded-xl font-bold text-xs transition shadow-md ${isCur ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30'} flex items-center justify-center gap-1.5">
+                <button onclick="loginAsRole('${k}'); loadLoginPortalTab();" class="flex-1 py-2 rounded-xl font-bold text-xs transition shadow-md ${isCur ? 'bg-emerald-600 text-white' : `bg-gradient-to-r ${theme.gradient} hover:brightness-110 text-white`} flex items-center justify-center gap-1.5">
                   <i data-lucide="${isCur ? 'check-circle' : 'log-in'}" class="w-3.5 h-3.5"></i>
-                  <span>${isCur ? 'Active Session' : 'Login As ' + u.name.split(' ')[0]}</span>
+                  <span>${isCur ? 'Active Session' : 'Enter ' + theme.shortName + ' Portal'}</span>
                 </button>
                 <button onclick="loginAsRole('${k}'); navigateToTab('dashboard');" class="px-3 py-2 rounded-xl bg-dark-900 hover:bg-dark-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition" title="Login and open Dashboard">
                   Dashboard ➔
@@ -870,7 +1043,7 @@ function loadLoginPortalTab() {
 
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 ${restrictedModules.length > 0 ? 'mb-6' : ''}">
             ${authorizedModules.map(m => `
-              <button onclick="navigateToTab('${m.id}')" class="p-4 rounded-2xl bg-dark-900 hover:bg-dark-700/80 border border-indigo-500/40 hover:border-indigo-400 text-left transition group shadow-sm">
+              <button onclick="navigateToTab('${m.id}')" class="portal-module-tile p-4 rounded-2xl bg-dark-900 hover:bg-dark-700/80 border ${activeTheme.border} hover:border-white/20 text-left transition group shadow-sm">
                 <div class="flex items-center justify-between mb-2">
                   <div class="h-9 w-9 rounded-xl bg-indigo-500/15 text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition">
                     <i data-lucide="${m.icon}" class="w-4 h-4"></i>
@@ -954,6 +1127,9 @@ async function handlePortalCredentialLogin(e) {
 // =========================================================================
 async function loadDashboard() {
   const main = document.getElementById('mainContent');
+  const roleKey = STATE.currentRole || 'ROLE_EMPLOYEE';
+  const theme = getRoleTheme(roleKey);
+  const allowedIds = (ROLE_NAVS[roleKey] || ROLE_NAVS.ROLE_EMPLOYEE).map(i => i.id);
   
   // Fetch fresh requests and bookings for live dashboard cards
   const [reqRes, bookRes, expRes] = await Promise.all([
@@ -969,67 +1145,53 @@ async function loadDashboard() {
   const activeTrip = bookings && bookings.length > 0 ? bookings[0] : null;
   const pendingApprovalsCount = requests.filter(r => r.status === 'SUBMITTED' || r.status === 'PENDING').length;
 
+  const quickModules = [
+    { id: 'search', icon: 'plane', color: 'text-indigo-400', title: 'Book Flights', sub: 'Corporate GDS' },
+    { id: 'requests', icon: 'file-text', color: 'text-purple-400', title: 'Travel Requests', sub: `${requests.length} Total` },
+    { id: 'approvals', icon: 'check-square', color: 'text-amber-400', title: 'Approvals Hub', sub: `${pendingApprovalsCount} Action Required` },
+    { id: 'itinerary', icon: 'ticket', color: 'text-emerald-400', title: 'E-Tickets & PNR', sub: `${bookings.length} Bookings` },
+    { id: 'expenses', icon: 'receipt', color: 'text-pink-400', title: 'AI OCR Expense', sub: `${expenses.length} Reports` },
+    { id: 'analytics', icon: 'bar-chart-3', color: 'text-cyan-400', title: 'BI Analytics', sub: 'Spend & ESG' },
+    { id: 'ai-assistant', icon: 'sparkles', color: 'text-violet-400', title: 'AI Assistant', sub: 'Smart Planner' },
+    { id: 'risk', icon: 'shield-alert', color: 'text-orange-400', title: 'Duty of Care', sub: 'Live Safety' },
+    { id: 'settings', icon: 'settings', color: 'text-sky-400', title: 'Policy Settings', sub: 'Org Config' },
+    { id: 'audit', icon: 'shield-check', color: 'text-emerald-400', title: 'Audit Trail', sub: 'Security Logs' }
+  ].filter(m => allowedIds.includes(m.id));
+
   main.innerHTML = `
+    ${renderPortalHero(roleKey, true)}
     ${renderFlowStepper()}
 
     <!-- Header Greeting -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 portal-card-animate">
       <div>
         <h1 class="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
           Welcome, ${STATE.currentUser.name} 
-          <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
+          <span class="text-xs px-2.5 py-1 rounded-full ${theme.accentBg} ${theme.accentText} font-semibold border ${theme.border}">
             ${STATE.currentUser.designation}
           </span>
         </h1>
-        <p class="text-xs text-slate-400 mt-1">Role: <strong class="text-emerald-400">${STATE.currentRole}</strong> • Acme Global Technologies Inc.</p>
+        <p class="text-xs text-slate-400 mt-1">Role: <strong class="${theme.accentText}">${STATE.currentRole}</strong> • Acme Global Technologies Inc.</p>
       </div>
       <div class="flex items-center gap-3">
-        <button onclick="goToFlowStep(1)" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/20 transition">
+        <button onclick="goToFlowStep(1)" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r ${theme.gradient} hover:brightness-110 text-white font-bold text-xs shadow-lg transition">
           <i data-lucide="play" class="w-4 h-4"></i> Start New Trip Flow
         </button>
-        <button onclick="navigateToTab('login-portal')" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-xs shadow-md transition">
-          <i data-lucide="shield-check" class="w-4 h-4"></i> Switch Identity
+        <button onclick="navigateToTab('login-portal')" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-900 hover:bg-dark-700 border border-slate-700 text-slate-200 font-bold text-xs transition">
+          <i data-lucide="shield-check" class="w-4 h-4"></i> Switch Portal
         </button>
       </div>
     </div>
 
-    <!-- Quick Module Launch Cards -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-      <button onclick="navigateToTab('search')" class="p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:border-indigo-500 text-left transition group">
-        <i data-lucide="plane" class="w-5 h-5 text-indigo-400 mb-1.5 group-hover:scale-110 transition"></i>
-        <div class="text-xs font-bold text-white">Book Flights</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">Corporate GDS</div>
+    <!-- Quick Module Launch Cards (role-filtered) -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-${Math.min(quickModules.length, 6)} gap-3">
+      ${quickModules.map(m => `
+      <button onclick="navigateToTab('${m.id}')" class="portal-module-tile p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:${theme.border} text-left transition group">
+        <i data-lucide="${m.icon}" class="w-5 h-5 ${m.color} mb-1.5 group-hover:scale-110 transition"></i>
+        <div class="text-xs font-bold text-white">${m.title}</div>
+        <div class="text-[10px] text-slate-400 mt-0.5">${m.sub}</div>
       </button>
-
-      <button onclick="navigateToTab('requests')" class="p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:border-indigo-500 text-left transition group">
-        <i data-lucide="file-text" class="w-5 h-5 text-purple-400 mb-1.5 group-hover:scale-110 transition"></i>
-        <div class="text-xs font-bold text-white">Travel Requests</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">${requests.length} Total</div>
-      </button>
-
-      <button onclick="navigateToTab('approvals')" class="p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:border-indigo-500 text-left transition group">
-        <i data-lucide="check-square" class="w-5 h-5 text-amber-400 mb-1.5 group-hover:scale-110 transition"></i>
-        <div class="text-xs font-bold text-white">Approvals Hub</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">${pendingApprovalsCount} Action Required</div>
-      </button>
-
-      <button onclick="navigateToTab('itinerary')" class="p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:border-indigo-500 text-left transition group">
-        <i data-lucide="ticket" class="w-5 h-5 text-emerald-400 mb-1.5 group-hover:scale-110 transition"></i>
-        <div class="text-xs font-bold text-white">E-Tickets & PNR</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">${bookings.length} Bookings</div>
-      </button>
-
-      <button onclick="navigateToTab('expenses')" class="p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:border-indigo-500 text-left transition group">
-        <i data-lucide="receipt" class="w-5 h-5 text-pink-400 mb-1.5 group-hover:scale-110 transition"></i>
-        <div class="text-xs font-bold text-white">AI OCR Expense</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">${expenses.length} Reports</div>
-      </button>
-
-      <button onclick="navigateToTab('analytics')" class="p-3.5 rounded-2xl bg-dark-800/80 hover:bg-dark-700 border border-slate-800 hover:border-indigo-500 text-left transition group">
-        <i data-lucide="bar-chart-3" class="w-5 h-5 text-cyan-400 mb-1.5 group-hover:scale-110 transition"></i>
-        <div class="text-xs font-bold text-white">BI Analytics</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">Spend & ESG</div>
-      </button>
+      `).join('')}
     </div>
 
     <!-- KPI Metric Cards Grid -->
