@@ -28,6 +28,33 @@ const STATE = {
   splashDismissed: localStorage.getItem('corporate_splash_seen') === 'true'
 };
 
+// Realistic travel imagery (Unsplash URLs used by backend seed/search + local workflow reference)
+const WORKFLOW_IMAGES = {
+  splash: 'https://images.unsplash.com/photo-1436491865331-9a61a109fc08?w=1920&auto=format&fit=crop&q=80',
+  login: 'https://images.unsplash.com/photo-1436491865331-9a61a109fc08?w=1400&auto=format&fit=crop&q=80',
+  workflowReference: '/assets/workflow-reference.jpg',
+  orgLogo: 'https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=200&auto=format&fit=crop&q=80',
+  employeeBanner: 'https://images.unsplash.com/photo-1464037866551-637ca0748ace?w=1200&auto=format&fit=crop&q=80',
+  flightCard: 'https://images.unsplash.com/photo-1436491865331-9a61a109fc08?w=480&auto=format&fit=crop&q=80',
+  dashboardTrip: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=900&auto=format&fit=crop&q=80',
+  hotelFallback: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=80',
+  roles: {
+    ROLE_EMPLOYEE: 'https://images.unsplash.com/photo-1464037866551-637ca0748ace?w=1200&auto=format&fit=crop&q=80',
+    ROLE_APPROVER: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&auto=format&fit=crop&q=80',
+    ROLE_TRAVEL_MANAGER: 'https://images.unsplash.com/photo-1488085061388-127e7149baa8?w=1200&auto=format&fit=crop&q=80',
+    ROLE_FINANCE: 'https://images.unsplash.com/photo-1554224311-bc0212f2d511?w=1200&auto=format&fit=crop&q=80',
+    ROLE_COMPANY_ADMIN: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&auto=format&fit=crop&q=80',
+    ROLE_SUPER_ADMIN: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80',
+    ROLE_HR: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1200&auto=format&fit=crop&q=80',
+    ROLE_VENDOR: 'https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=1200&auto=format&fit=crop&q=80',
+    ROLE_SUPPORT: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=1200&auto=format&fit=crop&q=80'
+  }
+};
+
+function heroImageUrl(roleKey) {
+  return WORKFLOW_IMAGES.roles[roleKey] || WORKFLOW_IMAGES.employeeBanner;
+}
+
 // =========================================================================
 // CENTRALIZED AUTHENTICATED API FETCH HELPER
 // =========================================================================
@@ -216,10 +243,12 @@ function renderPortalHero(roleKey, compact = false) {
   const theme = getRoleTheme(roleKey);
   const user = DEMO_USERS[roleKey] || STATE.currentUser;
   const padding = compact ? 'p-5' : 'p-6 md:p-8';
+  const heroPhoto = heroImageUrl(roleKey);
   return `
     <div class="portal-hero rounded-3xl ${padding} mb-6 relative overflow-hidden border ${theme.border} ${theme.glow}">
-      <div class="absolute inset-0 bg-gradient-to-br ${theme.gradient} opacity-90"></div>
-      <div class="absolute inset-0 portal-hero-pattern opacity-30"></div>
+      <div class="absolute inset-0 hero-photo-layer" style="background-image: url('${heroPhoto}')"></div>
+      <div class="absolute inset-0 bg-gradient-to-br ${theme.gradient} opacity-80"></div>
+      <div class="absolute inset-0 portal-hero-pattern opacity-20"></div>
       <div class="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl"></div>
       <div class="absolute -left-8 bottom-0 h-32 w-32 rounded-full bg-black/20 blur-2xl"></div>
       <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
@@ -960,9 +989,10 @@ function loadLoginPortalTab() {
           const isCur = STATE.currentRole === k;
           const roleNavItems = (ROLE_NAVS[k] || []).filter(item => item.id !== 'login-portal');
           return `
-            <div class="portal-role-card portal-card-animate p-5 rounded-2xl border transition-all relative ${isCur ? `active bg-gradient-to-b ${theme.cardGradient} ${theme.border} ring-2 ring-white/10 shadow-xl ${theme.glow}` : 'bg-dark-800/90 hover:bg-dark-700/80 border-slate-800 hover:border-slate-600'}" style="animation-delay: ${idx * 40}ms">
-              <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${theme.gradient} rounded-t-2xl"></div>
-              <div class="flex items-start justify-between gap-3">
+            <div class="portal-role-card portal-card-animate p-5 rounded-2xl border transition-all relative overflow-hidden ${isCur ? `active bg-gradient-to-b ${theme.cardGradient} ${theme.border} ring-2 ring-white/10 shadow-xl ${theme.glow}` : 'bg-dark-800/90 hover:bg-dark-700/80 border-slate-800 hover:border-slate-600'}" style="animation-delay: ${idx * 40}ms">
+              <div class="role-card-photo" style="background-image: url('${heroImageUrl(k)}')"></div>
+              <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${theme.gradient} rounded-t-2xl z-10"></div>
+              <div class="flex items-start justify-between gap-3 relative z-10">
                 <div class="flex items-center gap-3">
                   <div class="h-12 w-12 rounded-2xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center text-white font-extrabold text-sm shadow-md shrink-0">
                     <i data-lucide="${theme.icon}" class="w-5 h-5"></i>
@@ -1016,7 +1046,9 @@ function loadLoginPortalTab() {
 
     <!-- Section 2: Standard Credential Authentication Form -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-      <div class="lg:col-span-2 glass-panel p-6 rounded-2xl border border-slate-800">
+      <div class="lg:col-span-2 glass-panel login-photo-panel rounded-2xl border border-slate-800 relative overflow-hidden">
+        <div class="login-photo-bg" style="background-image: url('${WORKFLOW_IMAGES.login}')"></div>
+        <div class="relative z-10 p-6">
         <div class="flex items-center gap-2 text-indigo-400 mb-1 font-bold text-xs">
           <i data-lucide="key" class="w-4 h-4"></i> CUSTOM CREDENTIAL AUTHENTICATION
         </div>
@@ -1045,6 +1077,7 @@ function loadLoginPortalTab() {
             </button>
           </div>
         </form>
+        </div>
       </div>
 
       <!-- Quick Session Stats -->
@@ -1078,6 +1111,19 @@ function loadLoginPortalTab() {
         <button onclick="navigateToTab('audit')" class="w-full mt-4 py-2 rounded-xl bg-dark-900 hover:bg-dark-700 border border-slate-700 text-indigo-300 hover:text-white font-bold text-xs transition flex items-center justify-center gap-1.5">
           <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Inspect Security Audit Trail ➔
         </button>
+      </div>
+    </div>
+
+    <!-- Workflow Reference Overview -->
+    <div class="glass-panel p-6 rounded-3xl border border-indigo-500/30 mb-8 overflow-hidden">
+      <div class="flex flex-col xl:flex-row gap-6 items-center">
+        <div class="flex-1">
+          <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
+            <i data-lucide="layout-grid" class="w-5 h-5 text-indigo-400"></i> Complete Reference Workflow
+          </h3>
+          <p class="text-xs text-slate-400 mt-2">Splash → Portal Selection → Login → Role Dashboards → Travel Request → Approvals → HR Budget → Finance Release → Support Desk → Chat & Notifications.</p>
+        </div>
+        <img src="${WORKFLOW_IMAGES.workflowReference}" alt="CorporateTravel workflow reference" class="workflow-reference-image rounded-2xl border border-slate-700 shadow-2xl">
       </div>
     </div>
 
@@ -1462,8 +1508,10 @@ async function loadDashboard() {
 
     <!-- Active Trip Spotlight Banner & Quick Actions -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 glass-panel p-6 rounded-2xl border border-slate-800 relative overflow-hidden">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div class="lg:col-span-2 glass-panel rounded-2xl border border-slate-800 relative overflow-hidden">
+        <div class="dashboard-trip-photo" style="background-image: url('${WORKFLOW_IMAGES.dashboardTrip}')"></div>
+        <div class="relative z-10 p-6">
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
           <div class="flex items-center gap-2.5">
             <span class="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping"></span>
             <h3 class="font-extrabold text-base text-white">Active Confirmed Trip: ${activeTrip ? (activeTrip.tripName || 'Delhi Tech Summit') : 'Delhi Tech Summit'}</h3>
@@ -1503,6 +1551,7 @@ async function loadDashboard() {
               Trip Timeline
             </button>
           </div>
+        </div>
         </div>
       </div>
 
@@ -1665,12 +1714,10 @@ async function executeFlightSearch() {
   }
 
   container.innerHTML = flights.map(f => `
-    <div class="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition">
+    <div class="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition overflow-hidden">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-extrabold text-sm shrink-0">
-            ${f.airline ? f.airline.substring(0, 2).toUpperCase() : 'AI'}
-          </div>
+          <div class="search-result-photo shrink-0" style="background-image: url('${WORKFLOW_IMAGES.flightCard}')"></div>
           <div>
             <div class="flex items-center gap-2">
               <h4 class="font-extrabold text-base text-white">${f.airline} <span class="font-mono text-indigo-300 font-bold">${f.flightNumber}</span></h4>
@@ -1714,33 +1761,37 @@ async function executeHotelSearch() {
   const res = await apiFetch('/api/hotels/search?city=Delhi');
   const hotels = (res && res.data) ? res.data : [];
 
-  container.innerHTML = hotels.map(h => `
-    <div class="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition">
+  container.innerHTML = hotels.map(h => {
+    const hotelName = h.name || h.hotelName || 'Corporate Hotel Partner';
+    const nightly = h.pricePerNight || h.nightlyPrice || 6200;
+    const photo = h.imageUrl || WORKFLOW_IMAGES.hotelFallback;
+    const stars = h.starRating || h.ratingStars || 4.5;
+    return `
+    <div class="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition overflow-hidden">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-extrabold text-sm shrink-0">
-            <i data-lucide="hotel" class="w-6 h-6"></i>
-          </div>
+          <div class="search-result-photo shrink-0" style="background-image: url('${photo}')"></div>
           <div>
             <div class="flex items-center gap-2">
-              <h4 class="font-extrabold text-base text-white">${h.hotelName}</h4>
-              <span class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">PREFFERED CORPORATE PARTNER</span>
+              <h4 class="font-extrabold text-base text-white">${hotelName}</h4>
+              <span class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">PREFERRED CORPORATE PARTNER</span>
             </div>
-            <div class="text-xs text-slate-400 mt-1">${h.address || 'Diplomatic Enclave, Delhi'} • ${h.ratingStars || 5} Stars • Free Breakfast & Wi-Fi</div>
+            <div class="text-xs text-slate-400 mt-1">${h.address || 'Diplomatic Enclave, Delhi'} • ${stars} Stars • ${h.roomType || 'Executive Room'}</div>
           </div>
         </div>
         <div class="flex items-center gap-4">
           <div class="text-right">
             <div class="text-xs text-slate-400">Nightly Rate</div>
-            <div class="text-xl font-extrabold text-emerald-400">${formatMoney(h.nightlyPrice || 6200)}</div>
+            <div class="text-xl font-extrabold text-emerald-400">${formatMoney(nightly)}</div>
           </div>
-          <button onclick="bookHotelNow(${h.id}, '${h.hotelName}', ${h.nightlyPrice || 6200})" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition">
+          <button onclick="bookHotelNow(${h.id}, '${hotelName.replace(/'/g, "\\'")}', ${nightly})" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition">
             Book Room
           </button>
         </div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   safeCreateIcons();
 }
@@ -2695,6 +2746,19 @@ function loadAiAssistantTab() {
         <button onclick="executeAiQuery()" class="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center gap-2">
           <i data-lucide="send" class="w-4 h-4"></i> Ask AI
         </button>
+      </div>
+    </div>
+
+    <!-- Workflow Reference Overview -->
+    <div class="glass-panel p-6 rounded-3xl border border-indigo-500/30 mb-8 overflow-hidden">
+      <div class="flex flex-col lg:flex-row gap-6 items-center">
+        <div class="flex-1">
+          <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
+            <i data-lucide="layout-grid" class="w-5 h-5 text-indigo-400"></i> Complete Reference Workflow
+          </h3>
+          <p class="text-xs text-slate-400 mt-2">Splash → Portal Selection → Login → Role Dashboards → Travel Request → Approvals → HR Budget → Finance Release → Support Desk → Chat & Notifications.</p>
+        </div>
+        <img src="${WORKFLOW_IMAGES.workflowReference}" alt="CorporateTravel workflow reference" class="workflow-reference-image rounded-2xl border border-slate-700 shadow-2xl">
       </div>
     </div>
   `;
