@@ -1,52 +1,66 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="CorporateTravel360 — enterprise business travel, booking, approvals, and expense management for global teams.">
   <title>CorporateTravel360 | Business Travel & Expense Management</title>
+
+  <!-- Travisa Template Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Poppins:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css">
+  <link rel="stylesheet" href="/travisa/lib/animate/animate.min.css">
+  <link rel="stylesheet" href="/travisa/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/travisa/css/style.css">
   
-  <!-- Tailwind CSS -->
+  <!-- Tailwind CSS (layout utilities) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      darkMode: 'class',
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif']
+            sans: ['Open Sans', 'system-ui', 'sans-serif'],
+            heading: ['Poppins', 'sans-serif']
           },
           borderRadius: {
-            xl: '16px',
-            '2xl': '20px',
-            '3xl': '24px'
+            xl: '10px',
+            '2xl': '10px',
+            '3xl': '10px'
           },
           colors: {
             brand: {
-              50: '#eff6ff',
-              100: '#dbeafe',
-              200: '#bfdbfe',
-              300: '#93c5fd',
-              400: '#60a5fa',
-              500: '#007bff',
-              600: '#0069d9',
-              700: '#0056b3',
-              800: '#004494',
-              900: '#003366',
-              950: '#0a0c1a'
+              50: '#F0F5FB',
+              100: '#dce8f5',
+              200: '#b8cfe8',
+              300: '#7aa3cc',
+              400: '#3d6f99',
+              500: '#003A66',
+              600: '#003A66',
+              700: '#002d4f',
+              800: '#002038',
+              900: '#001425',
+              950: '#000a12'
+            },
+            accent: {
+              500: '#E02454',
+              600: '#c41e48'
             },
             dark: {
-              900: '#0a0c1a',
-              800: '#111827',
-              700: '#1a2235',
-              600: '#243047',
-              500: '#007bff'
+              950: '#F0F5FB',
+              900: '#ffffff',
+              800: '#ffffff',
+              700: '#F0F5FB',
+              600: '#e8eef5',
+              500: '#003A66'
             }
           },
           boxShadow: {
-            neon: '0 0 15px rgba(0, 123, 255, 0.45)',
-            'neon-lg': '0 0 25px rgba(0, 123, 255, 0.55)',
-            'neon-purple': '0 0 20px rgba(139, 92, 246, 0.4)'
+            neon: '0 0 15px rgba(0, 58, 102, 0.25)',
+            'neon-lg': '0 8px 32px rgba(0, 58, 102, 0.15)',
+            'neon-purple': '0 0 20px rgba(224, 36, 84, 0.2)'
           }
         }
       }
@@ -65,7 +79,7 @@
 
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body class="bg-dark-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+<body class="travisa-theme bg-light min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
 
   <!-- Reference Workflow Splash Screen -->
   <div id="splashScreen" class="splash-screen">
@@ -93,42 +107,37 @@
     </div>
   </div>
 
-  <!-- System status bar -->
-  <div id="topAlertBanner" class="site-status-bar px-4 py-2 text-xs font-medium flex items-center justify-between no-print">
-    <div class="flex items-center gap-2">
-      <span class="flex h-2 w-2 relative">
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-      </span>
-      <span>All systems operational</span>
-      <span class="hidden sm:inline text-slate-500">•</span>
-      <span class="hidden sm:inline">24/7 global travel support</span>
-    </div>
-    <div class="flex items-center gap-4 text-slate-400">
-      <span class="hidden md:inline">ISO 27001 • SOC 2</span>
-      <a href="/swagger-ui/index.html" target="_blank" class="hover:text-white transition">Developers</a>
+  <!-- Travisa Topbar -->
+  <div id="topAlertBanner" class="container-fluid bg-primary px-4 px-lg-5 topbar site-status-bar no-print">
+    <div class="d-flex w-100 align-items-center justify-content-between flex-wrap gap-2 py-1">
+      <div class="d-flex align-items-center gap-2 text-white small">
+        <span class="rounded-circle bg-success d-inline-block" style="width:8px;height:8px;"></span>
+        <span>All systems operational</span>
+        <span class="d-none d-sm-inline opacity-75">• 24/7 global travel support</span>
+      </div>
+      <div class="d-flex align-items-center gap-3 small">
+        <span class="d-none d-md-inline text-white opacity-75">ISO 27001 • SOC 2</span>
+        <a href="/swagger-ui/index.html" target="_blank" class="text-white text-decoration-none">Developers</a>
+      </div>
     </div>
   </div>
 
-  <!-- Header / Navigation Bar -->
-  <header class="bg-dark-800/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-4 lg:px-8 py-3 flex items-center justify-between no-print">
-    <!-- Brand Logo -->
-    <div class="flex items-center gap-3">
-      <div class="site-logo-mark shrink-0">
-        <img id="siteLogoImg" src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200&auto=format&fit=crop&q=85" alt="CorporateTravel360" class="h-full w-full object-cover">
-      </div>
+  <!-- Travisa Navbar -->
+  <div class="container-fluid nav-bar p-0 sticky-top z-40 no-print">
+  <header class="navbar navbar-expand-lg navbar-light bg-white px-4 px-lg-5 py-2 shadow-sm w-100">
+    <a href="#" onclick="navigateToTab('login-portal'); return false;" class="navbar-brand p-0 d-flex align-items-center gap-2 text-decoration-none">
+      <img id="siteLogoImg" src="/travisa/img/brand-logo.png" alt="CorporateTravel360" class="site-logo-mark" style="height:48px;width:auto;">
       <div>
-        <div class="flex items-center gap-2">
-          <span class="site-brand-name">CorporateTravel360</span>
-        </div>
-        <p class="text-[11px] text-slate-400 font-medium">Business Travel Platform</p>
+        <span class="site-brand-name d-block">CorporateTravel360</span>
+        <small class="text-muted">Business Travel Platform</small>
       </div>
-    </div>
+    </a>
 
-    <nav class="site-header-nav" aria-label="Primary">
-      <a href="#" onclick="navigateToTab('login-portal'); return false;">Product</a>
-      <a href="#" onclick="navigateToTab('search'); return false;">Book Travel</a>
-      <a href="#" onclick="navigateToTab('analytics'); return false;">Analytics</a>
-      <a href="#" onclick="toggleLiveChatDrawer(); return false;">Support</a>
+    <nav class="navbar-nav ms-auto d-none d-lg-flex align-items-center gap-1 site-header-nav" aria-label="Primary">
+      <a href="#" onclick="navigateToTab('login-portal'); return false;" class="nav-link">Product</a>
+      <a href="#" onclick="navigateToTab('search'); return false;" class="nav-link">Book Travel</a>
+      <a href="#" onclick="navigateToTab('analytics'); return false;" class="nav-link">Analytics</a>
+      <a href="#" onclick="toggleLiveChatDrawer(); return false;" class="nav-link">Support</a>
     </nav>
 
     <!-- Center Mode Switch & Interactive Flow Stepper Controller -->
@@ -155,7 +164,7 @@
     </div>
 
     <!-- Right Controls: Role Switcher, Currency, Notifications, User Profile -->
-    <div class="flex items-center gap-3">
+    <div class="d-flex align-items-center gap-2 ms-lg-3 flex-wrap justify-content-end">
       <!-- Currency Switcher -->
       <select id="currencySelector" onchange="changeCurrency(this.value)" class="bg-dark-900 text-xs font-semibold text-slate-300 border border-slate-700 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none">
         <option value="INR">₹ INR</option>
@@ -181,7 +190,7 @@
       </div>
 
       <!-- Sign in -->
-      <button onclick="openLoginPortalModal()" class="site-btn-primary !py-1.5 !px-3 !text-xs !shadow-md" title="Sign in to your workspace">
+      <button onclick="openLoginPortalModal()" class="btn btn-primary border-secondary rounded-pill py-2 px-3 px-lg-4 text-white small fw-bold" title="Sign in to your workspace">
         <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
         <span>Sign in</span>
       </button>
@@ -216,9 +225,10 @@
       </button>
     </div>
   </header>
+  </div>
 
   <!-- Top 11 Modules Quick Navigation Strip -->
-  <div class="bg-dark-950/90 border-b border-slate-800/80 px-4 lg:px-8 py-2 overflow-x-auto no-scrollbar flex items-center gap-2 text-xs font-semibold shrink-0 no-print" id="topModuleStrip">
+  <div class="bg-light border-bottom px-4 lg:px-8 py-2 overflow-x-auto no-scrollbar d-flex align-items-center gap-2 small fw-semibold shrink-0 no-print module-strip" id="topModuleStrip">
     <span class="text-[10px] uppercase font-bold text-indigo-400 tracking-wider shrink-0 mr-1 flex items-center gap-1">
       <i data-lucide="shield" class="w-3.5 h-3.5 text-indigo-400"></i> <span id="stripRoleName">EMPLOYEE PORTAL</span>:
     </span>
@@ -403,40 +413,60 @@
     </div>
   </div>
 
-  <footer class="site-footer-pro no-print">
-    <div class="site-footer-grid">
-      <div class="site-footer-brand">
-        <div class="site-logo-mark sm"><img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200&auto=format&fit=crop&q=85" alt="" class="h-full w-full object-cover"></div>
-        <p class="site-brand-name text-base mt-3">CorporateTravel360</p>
-        <p class="text-xs text-slate-400 mt-2 max-w-xs">The modern corporate travel platform for booking, policy compliance, duty of care, and expense management.</p>
+  <footer class="container-fluid footer py-5 wow fadeIn site-footer-pro no-print">
+    <div class="container py-2">
+      <div class="row g-5">
+        <div class="col-md-6 col-lg-3">
+          <div class="footer-item d-flex flex-column">
+            <img src="/travisa/img/brand-logo.png" alt="" style="height:42px;width:auto;" class="mb-3">
+            <h4 class="text-secondary mb-3">CorporateTravel360</h4>
+            <p class="text-white mb-0">The modern corporate travel platform for booking, policy compliance, duty of care, and expense management.</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="footer-item d-flex flex-column">
+            <h4 class="text-secondary mb-3">Product</h4>
+            <a href="#" onclick="navigateToTab('search'); return false;"><i class="fas fa-angle-right me-2"></i>Book Travel</a>
+            <a href="#" onclick="navigateToTab('requests'); return false;"><i class="fas fa-angle-right me-2"></i>Travel Requests</a>
+            <a href="#" onclick="navigateToTab('expenses'); return false;"><i class="fas fa-angle-right me-2"></i>Expenses</a>
+            <a href="#" onclick="navigateToTab('analytics'); return false;"><i class="fas fa-angle-right me-2"></i>Analytics</a>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="footer-item d-flex flex-column">
+            <h4 class="text-secondary mb-3">Company</h4>
+            <a href="#"><i class="fas fa-angle-right me-2"></i>About</a>
+            <a href="#"><i class="fas fa-angle-right me-2"></i>Customers</a>
+            <a href="#"><i class="fas fa-angle-right me-2"></i>Careers</a>
+            <a href="#"><i class="fas fa-angle-right me-2"></i>Contact</a>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="footer-item d-flex flex-column">
+            <h4 class="text-secondary mb-3">Support</h4>
+            <a href="#" onclick="toggleLiveChatDrawer(); return false;"><i class="fas fa-angle-right me-2"></i>Live Chat</a>
+            <a href="#"><i class="fas fa-angle-right me-2"></i>Help Center</a>
+            <a href="#"><i class="fas fa-angle-right me-2"></i>Travel Alerts</a>
+            <a href="/swagger-ui/index.html" target="_blank"><i class="fas fa-angle-right me-2"></i>API Docs</a>
+          </div>
+        </div>
       </div>
-      <div>
-        <h5>Product</h5>
-        <a href="#" onclick="navigateToTab('search'); return false;">Book Travel</a>
-        <a href="#" onclick="navigateToTab('requests'); return false;">Travel Requests</a>
-        <a href="#" onclick="navigateToTab('expenses'); return false;">Expenses</a>
-        <a href="#" onclick="navigateToTab('analytics'); return false;">Analytics</a>
-      </div>
-      <div>
-        <h5>Company</h5>
-        <a href="#">About</a>
-        <a href="#">Customers</a>
-        <a href="#">Careers</a>
-        <a href="#">Contact</a>
-      </div>
-      <div>
-        <h5>Support</h5>
-        <a href="#" onclick="toggleLiveChatDrawer(); return false;">Live Chat</a>
-        <a href="#">Help Center</a>
-        <a href="#">Travel Alerts</a>
-        <a href="/swagger-ui/index.html" target="_blank">API Docs</a>
-      </div>
-    </div>
-    <div class="site-footer-bottom">
-      <span>© 2026 CorporateTravel360. All rights reserved.</span>
-      <span class="flex gap-4"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Security</a></span>
     </div>
   </footer>
+  <div class="container-fluid copyright py-3 no-print">
+    <div class="container">
+      <div class="row g-2 align-items-center">
+        <div class="col-md-6 text-center text-md-start">
+          <span class="text-white">© 2026 CorporateTravel360. All rights reserved.</span>
+        </div>
+        <div class="col-md-6 text-center text-md-end text-white">
+          <a href="#" class="text-white text-decoration-none me-3">Privacy</a>
+          <a href="#" class="text-white text-decoration-none me-3">Terms</a>
+          <a href="#" class="text-white text-decoration-none">Security</a>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
 </body>

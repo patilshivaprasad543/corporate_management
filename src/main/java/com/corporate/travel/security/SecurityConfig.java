@@ -50,6 +50,7 @@ public class SecurityConfig {
                     "/index.html",
                     "/app.js",
                     "/styles.css",
+                    "/travisa/**",
                     "/favicon.ico",
                     "/static/**",
                     "/assets/**",

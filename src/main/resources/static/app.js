@@ -467,9 +467,9 @@ function updateNotificationBadge() {
 function initSplashScreen() {
   const splash = document.getElementById('splashScreen');
   const splashBg = document.getElementById('splashPhotoBg');
-  if (splashBg) splashBg.style.backgroundImage = `url('${WORKFLOW_IMAGES.splash}')`;
+  if (splashBg) splashBg.style.backgroundImage = `url('/travisa/img/carousel-2.jpg')`;
   const logo = document.getElementById('siteLogoImg');
-  if (logo) logo.src = WORKFLOW_IMAGES.orgLogo;
+  if (logo) logo.src = '/travisa/img/brand-logo.png';
   if (!splash) return;
   if (STATE.splashDismissed) {
     splash.classList.add('splash-hidden');
@@ -1019,64 +1019,124 @@ function updateWalletDisplay() {
 function renderMarketingHomepage() {
   if (STATE.isAuthenticated) return '';
   return `
-    <section class="site-marketing-hero mb-8">
-      <div class="site-marketing-hero-bg" style="background-image: url('${WORKFLOW_IMAGES.city}')"></div>
-      <div class="site-marketing-hero-content">
-        <span class="site-eyebrow">Corporate travel management</span>
-        <h1 class="site-marketing-title">Travel smarter.<br>Spend less.<br>Stay compliant.</h1>
-        <p class="site-marketing-lead">Everything your team needs to book corporate travel, get approvals, manage itineraries, and reconcile expenses — in one beautiful platform.</p>
-        <div class="flex flex-wrap gap-3 mt-6">
-          <button onclick="document.getElementById('portalLoginUsername')?.focus(); window.scrollTo({top: 600, behavior: 'smooth'})" class="site-btn-primary">Sign in to your account</button>
-          <button onclick="loginAsRole('ROLE_EMPLOYEE'); navigateToTab('dashboard');" class="site-btn-secondary">View employee demo</button>
-        </div>
-        <div class="site-trust-row mt-8">
-          <span><i data-lucide="shield-check" class="w-4 h-4 inline"></i> SOC 2 Type II</span>
-          <span><i data-lucide="globe" class="w-4 h-4 inline"></i> 120+ countries</span>
-          <span><i data-lucide="users" class="w-4 h-4 inline"></i> 2.4M travelers</span>
+    <section class="carousel-header rounded mb-4 overflow-hidden">
+      <div class="position-relative" style="min-height:420px;">
+        <img src="/travisa/img/carousel-1.jpg" class="position-absolute w-100 h-100 object-fit-cover" alt="">
+        <div class="carousel-caption d-flex align-items-center justify-content-center h-100 w-100">
+          <div class="text-center p-4" style="max-width:760px;">
+            <h5 class="sub-title text-secondary text-uppercase fw-bold mb-3">Corporate travel management</h5>
+            <h1 class="display-4 text-capitalize text-white mb-3 fw-bold">Travel smarter. Spend less. Stay compliant.</h1>
+            <p class="text-white mb-4 fs-6">Everything your team needs to book corporate travel, get approvals, manage itineraries, and reconcile expenses — in one platform.</p>
+            <button onclick="document.getElementById('portalLoginUsername')?.focus(); window.scrollTo({top: 700, behavior: 'smooth'})" class="btn btn-primary border-secondary rounded-pill text-white py-3 px-5 me-2 mb-2">Sign in to your account</button>
+            <button onclick="loginAsRole('ROLE_EMPLOYEE'); navigateToTab('dashboard');" class="btn btn-secondary rounded-pill py-3 px-5 mb-2">View employee demo</button>
+            <div class="site-trust-row mt-4 justify-content-center text-white">
+              <span><i data-lucide="shield-check" class="w-4 h-4 inline"></i> SOC 2 Type II</span>
+              <span><i data-lucide="globe" class="w-4 h-4 inline"></i> 120+ countries</span>
+              <span><i data-lucide="users" class="w-4 h-4 inline"></i> 2.4M travelers</span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="site-stats-grid mb-8">
-      <div class="site-stat-card popout-3d"><strong>18%</strong><span>Average savings vs public fares</span></div>
-      <div class="site-stat-card popout-3d"><strong>4.2 hrs</strong><span>Saved per trip on approvals</span></div>
-      <div class="site-stat-card popout-3d"><strong>99.9%</strong><span>Platform uptime SLA</span></div>
-      <div class="site-stat-card popout-3d"><strong>24/7</strong><span>Global traveler support</span></div>
-    </section>
-
-    <section class="site-features-grid mb-8">
-      <div class="site-feature-card popout-3d">
-        <div class="site-feature-icon"><i data-lucide="plane" class="w-5 h-5"></i></div>
-        <h3>Book & manage trips</h3>
-        <p>Search negotiated corporate rates for flights, hotels, and ground transport with instant PNR issuance.</p>
-      </div>
-      <div class="site-feature-card popout-3d">
-        <div class="site-feature-icon"><i data-lucide="check-square" class="w-5 h-5"></i></div>
-        <h3>Policy & approvals</h3>
-        <p>Multi-tier approval workflows with automatic policy checks before every booking.</p>
-      </div>
-      <div class="site-feature-card popout-3d">
-        <div class="site-feature-icon"><i data-lucide="receipt" class="w-5 h-5"></i></div>
-        <h3>Expenses & OCR</h3>
-        <p>Scan receipts, submit claims, and get reimbursed with AI-powered fraud detection.</p>
-      </div>
-      <div class="site-feature-card popout-3d">
-        <div class="site-feature-icon"><i data-lucide="shield-alert" class="w-5 h-5"></i></div>
-        <h3>Duty of care</h3>
-        <p>Live risk alerts, traveler tracking, and emergency SOS for your global workforce.</p>
-      </div>
-    </section>
-
-    <section class="site-testimonial mb-8 popout-3d">
-      <div class="site-testimonial-photo" style="background-image: url('${WORKFLOW_IMAGES.dashboardTrip}')"></div>
-      <div class="site-testimonial-body">
-        <p>"CorporateTravel360 cut our travel spend by 22% in the first quarter while giving finance full visibility into every trip."</p>
-        <div class="mt-4">
-          <strong class="text-white">Sarah Connor</strong>
-          <span class="block text-xs text-slate-400">VP Operations, Acme Global Technologies</span>
+    <div class="container-fluid counter-facts py-5 mb-4 rounded">
+      <div class="container py-2">
+        <div class="row g-4">
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="counter popout-3d">
+              <div class="counter-icon"><i class="fas fa-percent"></i></div>
+              <div class="counter-content">
+                <h3>Savings</h3>
+                <div class="counter-value">18%</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="counter popout-3d">
+              <div class="counter-icon"><i class="fas fa-clock"></i></div>
+              <div class="counter-content">
+                <h3>Time Saved</h3>
+                <div class="counter-value">4.2 hrs</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="counter popout-3d">
+              <div class="counter-icon"><i class="fas fa-server"></i></div>
+              <div class="counter-content">
+                <h3>Uptime SLA</h3>
+                <div class="counter-value">99.9%</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="counter popout-3d">
+              <div class="counter-icon"><i class="fas fa-headset"></i></div>
+              <div class="counter-content">
+                <h3>Support</h3>
+                <div class="counter-value">24/7</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
+
+    <div class="container-fluid features overflow-hidden py-4 mb-4">
+      <div class="container">
+        <div class="section-title text-center mb-5">
+          <div class="sub-style"><h5 class="sub-title text-primary px-3">Platform capabilities</h5></div>
+          <h1 class="display-6 mb-3">Everything your travel program needs</h1>
+        </div>
+        <div class="row g-4 justify-content-center text-center">
+          <div class="col-md-6 col-lg-3">
+            <div class="feature-item text-center p-4 popout-3d h-100">
+              <div class="feature-icon p-3 mb-3 mx-auto"><i data-lucide="plane" class="w-8 h-8 text-primary"></i></div>
+              <h5 class="mb-2">Book & manage trips</h5>
+              <p class="mb-0 small">Search negotiated corporate rates for flights, hotels, and ground transport.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="feature-item text-center p-4 popout-3d h-100">
+              <div class="feature-icon p-3 mb-3 mx-auto"><i data-lucide="check-square" class="w-8 h-8 text-primary"></i></div>
+              <h5 class="mb-2">Policy & approvals</h5>
+              <p class="mb-0 small">Multi-tier approval workflows with automatic policy checks.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="feature-item text-center p-4 popout-3d h-100">
+              <div class="feature-icon p-3 mb-3 mx-auto"><i data-lucide="receipt" class="w-8 h-8 text-primary"></i></div>
+              <h5 class="mb-2">Expenses & OCR</h5>
+              <p class="mb-0 small">Scan receipts and get reimbursed with AI fraud detection.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="feature-item text-center p-4 popout-3d h-100">
+              <div class="feature-icon p-3 mb-3 mx-auto"><i data-lucide="shield-alert" class="w-8 h-8 text-primary"></i></div>
+              <h5 class="mb-2">Duty of care</h5>
+              <p class="mb-0 small">Live risk alerts, traveler tracking, and emergency SOS.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-fluid testimonial overflow-hidden pb-4 mb-4">
+      <div class="container py-2">
+        <div class="testimonial-item">
+          <div class="testimonial-content p-4 mb-4">
+            <p class="fs-5 mb-0">"CorporateTravel360 cut our travel spend by 22% in the first quarter while giving finance full visibility into every trip."</p>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <img src="/travisa/img/testimonial-1.jpg" class="rounded-circle" style="width:80px;height:80px;object-fit:cover;" alt="">
+            <div>
+              <h5 class="mb-0">Sarah Connor</h5>
+              <p class="mb-0 text-muted small">VP Operations, Acme Global Technologies</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
