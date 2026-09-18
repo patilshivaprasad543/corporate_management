@@ -25,7 +25,12 @@ const STATE = {
   auditLogs: [],
   chatConversation: null,
   analyticsCache: null,
-  splashDismissed: localStorage.getItem('corporate_splash_seen') === 'true'
+  splashDismissed: localStorage.getItem('corporate_splash_seen') === 'true',
+  chatChannel: 'SUPPORT',
+  requestWizardStep: 1,
+  approvalFilter: 'travel',
+  fabOpen: false,
+  profileSheetOpen: false
 };
 
 // Realistic travel imagery (Unsplash URLs used by backend seed/search + local workflow reference)
@@ -399,6 +404,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateTopStripActiveState('login-portal');
     loadLoginPortalTab();
   }
+  updateFabVisibility();
   safeCreateIcons();
 });
 
@@ -481,6 +487,86 @@ function dismissSplash(openPortal) {
 // =========================================================================
 // NAVIGATION & TABS SWITCHING
 // =========================================================================
+function updateMobileNav(tabId) {
+  document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabId);
+  });
+}
+
+function updateFabVisibility() {
+  const fab = document.getElementById('quickFab');
+  if (!fab) return;
+  const showFab = STATE.isAuthenticated && STATE.activeTab !== 'login-portal';
+  fab.classList.toggle('hidden', !showFab);
+}
+
+function toggleFabMenu(forceClose) {
+  const menu = document.getElementById('fabMenu');
+  const btn = document.getElementById('fabMainBtn');
+  if (!menu || !btn) return;
+  STATE.fabOpen = forceClose === true ? false : !STATE.fabOpen;
+  menu.classList.toggle('hidden', !STATE.fabOpen);
+  btn.classList.toggle('fab-open', STATE.fabOpen);
+}
+
+function runFabAction(action) {
+  toggleFabMenu(true);
+  if (action === 'request') openNewRequestModal();
+  else if (action === 'search') navigateToTab('search');
+  else if (action === 'expense') navigateToTab('expenses');
+  else if (action === 'itinerary') navigateToTab('itinerary');
+  else if (action === 'chat') toggleLiveChatDrawer();
+}
+
+function openProfileSheet() {
+  const sheet = document.getElementById('profileSheet');
+  if (!sheet) {
+    navigateToTab('login-portal');
+    return;
+  }
+  STATE.profileSheetOpen = true;
+  sheet.classList.remove('hidden');
+  renderProfileSheetContent();
+  safeCreateIcons();
+}
+
+function closeProfileSheet() {
+  const sheet = document.getElementById('profileSheet');
+  if (!sheet) return;
+  STATE.profileSheetOpen = false;
+  sheet.classList.add('hidden');
+}
+
+function renderProfileSheetContent() {
+  const container = document.getElementById('profileSheetContent');
+  if (!container) return;
+  const theme = getRoleTheme(STATE.currentRole || 'ROLE_EMPLOYEE');
+  const wallet = STATE.currentUser.wallet || { allocated: 0, spent: 0, remaining: 0 };
+  container.innerHTML = `
+    <div class="profile-sheet-hero">
+      <div class="user-avatar-ring lg mx-auto">${STATE.currentUser.avatar || 'PS'}</div>
+      <h3 class="text-lg font-extrabold text-white mt-3 text-center">${STATE.currentUser.name}</h3>
+      <p class="text-xs text-slate-400 text-center">${STATE.currentUser.designation}</p>
+      <span class="profile-role-pill">${theme.portalName}</span>
+    </div>
+    <div class="grid grid-cols-3 gap-2 my-4 text-center text-xs">
+      <div class="profile-stat-pill"><span class="text-slate-400 block">Allocated</span><strong class="text-white">${formatMoney(wallet.allocated)}</strong></div>
+      <div class="profile-stat-pill"><span class="text-slate-400 block">Spent</span><strong class="text-indigo-300">${formatMoney(wallet.spent)}</strong></div>
+      <div class="profile-stat-pill"><span class="text-slate-400 block">Remaining</span><strong class="text-emerald-400">${formatMoney(wallet.remaining)}</strong></div>
+    </div>
+    <div class="space-y-2">
+      <button onclick="closeProfileSheet(); navigateToTab('dashboard')" class="profile-sheet-action"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard</button>
+      <button onclick="closeProfileSheet(); openLoginPortalModal()" class="profile-sheet-action"><i data-lucide="shield-check" class="w-4 h-4"></i> Switch Role / Login</button>
+      <button onclick="closeProfileSheet(); handleLogout()" class="profile-sheet-action danger"><i data-lucide="log-out" class="w-4 h-4"></i> Logout</button>
+    </div>
+  `;
+}
+
+function handleMobileProfileTap() {
+  if (window.innerWidth <= 768) openProfileSheet();
+  else navigateToTab('login-portal');
+}
+
 function navigateToTab(tabId) {
   if (!STATE.isAuthenticated && tabId !== 'login-portal') {
     showToast(`🔒 Access Restricted: Please log in to unlock the '${tabId}' module.`, 'warning');
@@ -501,8 +587,12 @@ function navigateToTab(tabId) {
   }
 
   STATE.activeTab = tabId;
+  closeProfileSheet();
+  toggleFabMenu(true);
   renderNavigation();
   updateTopStripActiveState(tabId);
+  updateMobileNav(tabId);
+  updateFabVisibility();
   loadActiveTab();
 }
 
@@ -629,6 +719,13 @@ function loadActiveTab() {
   } catch (err) {
     console.error('Error rendering active tab:', err);
   }
+  const main = document.getElementById('mainContent');
+  if (main) {
+    main.classList.remove('page-enter');
+    void main.offsetWidth;
+    main.classList.add('page-enter');
+  }
+  updateFabVisibility();
   safeCreateIcons();
 }
 
@@ -671,7 +768,10 @@ function renderFlowStepper() {
       </div>
 
       <!-- Stepper Dots -->
-      <div class="grid grid-cols-4 md:grid-cols-8 gap-2 pt-4">
+      <div class="flow-progress-track mb-3">
+        <div class="flow-progress-fill" style="width: ${progressPercent}%"></div>
+      </div>
+      <div class="grid grid-cols-4 md:grid-cols-8 gap-2 pt-2">
         ${FLOW_STATE.steps.map(s => {
           const isDone = s.step < current;
           const isActive = s.step === current;
@@ -1412,6 +1512,8 @@ async function loadDashboard() {
   const expenses = (expRes && expRes.data) ? expRes.data : STATE.expenses;
 
   const rolePanelHtml = await renderRoleWorkflowPanel(roleKey);
+  const adminPanelHtml = await renderAdminCommandPanel(roleKey);
+  const employeeBannerHtml = roleKey === 'ROLE_EMPLOYEE' ? renderEmployeeTripBanner() : '';
 
   const activeTrip = bookings && bookings.length > 0 ? bookings[0] : null;
   const pendingApprovalsCount = requests.filter(r => r.status === 'SUBMITTED' || r.status === 'PENDING').length;
@@ -1430,7 +1532,9 @@ async function loadDashboard() {
   ].filter(m => allowedIds.includes(m.id));
 
   main.innerHTML = `
+    <div class="page-enter">
     ${renderPortalHero(roleKey, true)}
+    ${employeeBannerHtml}
     ${renderFlowStepper()}
 
     <!-- Header Greeting -->
@@ -1505,6 +1609,7 @@ async function loadDashboard() {
     </div>
 
     ${rolePanelHtml}
+    ${adminPanelHtml}
 
     <!-- Active Trip Spotlight Banner & Quick Actions -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1611,9 +1716,98 @@ async function loadDashboard() {
         </table>
       </div>
     </div>
+    </div>
   `;
 
   safeCreateIcons();
+}
+
+function renderEmployeeTripBanner() {
+  return `
+    <div class="employee-trip-banner rounded-3xl border border-indigo-500/30 mb-6 overflow-hidden relative">
+      <div class="employee-trip-photo" style="background-image: url('${WORKFLOW_IMAGES.employeeBanner}')"></div>
+      <div class="relative z-10 p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <span class="text-[10px] uppercase tracking-[0.2em] font-bold text-indigo-200">Employee Traveler Portal</span>
+          <h2 class="text-2xl md:text-3xl font-extrabold text-white mt-1">Plan Your Next Trip</h2>
+          <p class="text-sm text-slate-300 mt-2 max-w-xl">Search corporate rates, submit travel requests, and track approvals in one seamless workflow.</p>
+        </div>
+        <div class="flex flex-wrap gap-2 shrink-0">
+          <button onclick="openNewRequestModal()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-500 text-white font-bold text-xs shadow-lg hover:brightness-110 transition flex items-center gap-2">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i> Create Travel Request
+          </button>
+          <button onclick="navigateToTab('search')" class="px-4 py-2.5 rounded-xl bg-dark-900/80 border border-slate-600 text-slate-200 font-bold text-xs hover:bg-dark-700 transition">
+            Book Flights
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function renderAdminCommandPanel(roleKey) {
+  if (roleKey !== 'ROLE_COMPANY_ADMIN' && roleKey !== 'ROLE_SUPER_ADMIN') return '';
+  const res = await apiFetch('/api/analytics/dashboard');
+  const data = (res && res.data) ? res.data : null;
+  if (!data) return '';
+  const destinations = (data.topDestinations || []).slice(0, 4);
+  const trends = data.monthlyTrends || [];
+  const maxSpend = Math.max(...trends.map(t => Number(t.totalSpend || 0)), 1);
+
+  return `
+    <div class="workflow-panel p-6 rounded-3xl border border-sky-500/30 mb-2">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="font-extrabold text-lg text-white flex items-center gap-2">
+          <i data-lucide="building-2" class="w-5 h-5 text-sky-400"></i> Admin Command Center
+        </h3>
+        <span class="text-xs px-3 py-1 rounded-full bg-sky-500/15 text-sky-300 font-bold border border-sky-500/30">Live: /api/analytics/dashboard</span>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+          <div class="text-2xl font-extrabold text-white">${data.totalTrips || 0}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Total Trips</div>
+        </div>
+        <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+          <div class="text-2xl font-extrabold text-amber-400">${data.pendingApprovalsCount || 0}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Pending Approvals</div>
+        </div>
+        <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+          <div class="text-2xl font-extrabold text-emerald-400">${formatMoney(data.totalSavings)}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Total Savings</div>
+        </div>
+        <div class="stat-card-3d p-4 rounded-2xl border border-slate-800 text-center">
+          <div class="text-2xl font-extrabold text-indigo-400">${data.policyComplianceRate || 0}%</div>
+          <div class="text-[11px] text-slate-400 mt-1">Policy Compliance</div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="p-4 rounded-2xl bg-dark-900/70 border border-slate-800">
+          <h4 class="text-sm font-bold text-white mb-3">Travel Requests Overview</h4>
+          <div class="flex items-end gap-2 h-32">
+            ${trends.map(t => {
+              const h = Math.round((Number(t.totalSpend) / maxSpend) * 100);
+              return `<div class="flex-1 flex flex-col items-center gap-1">
+                <div class="admin-spark-bar w-full rounded-t-lg bg-gradient-to-t from-indigo-600 to-cyan-400" style="height: ${Math.max(h, 8)}%"></div>
+                <span class="text-[10px] text-slate-500">${t.month}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="p-4 rounded-2xl bg-dark-900/70 border border-slate-800">
+          <h4 class="text-sm font-bold text-white mb-3">Top Destinations</h4>
+          <div class="space-y-3 text-xs">
+            ${destinations.map(d => {
+              const pct = Math.min(100, Math.round((Number(d.tripCount) / Math.max(destinations[0].tripCount, 1)) * 100));
+              return `<div>
+                <div class="flex justify-between mb-1"><span class="text-white font-bold">${d.destination}</span><span class="text-indigo-300">${d.tripCount} trips</span></div>
+                <div class="dest-progress-track"><div class="dest-progress-fill" style="width:${pct}%"></div></div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 // =========================================================================
@@ -1998,92 +2192,83 @@ function filterRequestsTable() {
 }
 
 function openNewRequestModal(prefAirline, prefFlight, prefPrice) {
+  STATE.requestWizardStep = 1;
+  renderRequestWizardModal(prefAirline, prefFlight, prefPrice);
+}
+
+function renderRequestWizardModal(prefAirline, prefFlight, prefPrice) {
   const modalContainer = document.getElementById('modalContainer');
   const estBudget = prefPrice ? (prefPrice + 18000) : 28000;
+  const step = STATE.requestWizardStep;
+  const steps = ['Travel Details', 'Budget & Purpose', 'Approval Flow', 'Review'];
 
   modalContainer.innerHTML = `
     <div class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div class="bg-dark-800 border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl p-6 my-8">
+      <div class="bg-dark-800 border border-slate-700 rounded-2xl w-full max-w-3xl shadow-2xl p-6 my-8 request-wizard-modal">
         <div class="flex items-center justify-between pb-4 border-b border-slate-700">
           <div class="flex items-center gap-2">
             <i data-lucide="plane-takeoff" class="w-5 h-5 text-indigo-400"></i>
             <div>
-              <h3 class="font-bold text-lg text-white">Create Corporate Travel Request (Flow Step 2)</h3>
-              <p class="text-[10px] text-slate-400">Validated in real-time against corporate policy rules</p>
+              <h3 class="font-bold text-lg text-white">Corporate Travel Request</h3>
+              <p class="text-[10px] text-slate-400">4-step workflow aligned to reference design</p>
             </div>
           </div>
-          <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
 
-        <form id="travelRequestForm" onsubmit="handleCreateRequest(event)" class="space-y-4 mt-4 text-xs">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Trip Name *</label>
-              <input type="text" id="reqTripName" required value="Annual Tech Summit & Architecture Review" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Trip Type *</label>
-              <select id="reqTripType" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
-                <option value="CLIENT_VISIT">Client Visit</option>
-                <option value="BUSINESS_MEETING" selected>Business Meeting</option>
-                <option value="CONFERENCE">Conference & Summit</option>
-                <option value="TRAINING">Training & Workshop</option>
-              </select>
+        <div class="request-wizard-steps mt-4 mb-6">
+          ${steps.map((label, i) => {
+            const n = i + 1;
+            const active = n === step;
+            const done = n < step;
+            return `<div class="request-wizard-step ${active ? 'active' : ''} ${done ? 'done' : ''}">
+              <div class="request-wizard-dot">${done ? '✓' : n}</div>
+              <span>${label}</span>
+            </div>`;
+          }).join('')}
+        </div>
+
+        <form id="travelRequestForm" onsubmit="handleCreateRequest(event)" class="space-y-4 text-xs">
+          <div class="${step === 1 ? '' : 'hidden'}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label class="font-semibold text-slate-300 block mb-1">Trip Name *</label><input type="text" id="reqTripName" required value="Annual Tech Summit & Architecture Review" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
+              <div><label class="font-semibold text-slate-300 block mb-1">Trip Type *</label><select id="reqTripType" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"><option value="CLIENT_VISIT" selected>Client Visit</option><option value="BUSINESS_MEETING">Business Meeting</option><option value="CONFERENCE">Conference</option><option value="TRAINING">Training</option></select></div>
+              <div><label class="font-semibold text-slate-300 block mb-1">Origin *</label><input type="text" id="reqOrigin" required value="Hyderabad (HYD)" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
+              <div><label class="font-semibold text-slate-300 block mb-1">Destination *</label><input type="text" id="reqDest" required value="Delhi (DEL)" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
+              <div><label class="font-semibold text-slate-300 block mb-1">Departure *</label><input type="date" id="reqDepDate" required class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
+              <div><label class="font-semibold text-slate-300 block mb-1">Return</label><input type="date" id="reqRetDate" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Origin City *</label>
-              <input type="text" id="reqOrigin" required value="Hyderabad (HYD)" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
+          <div class="${step === 2 ? '' : 'hidden'}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label class="font-semibold text-slate-300 block mb-1">Estimated Budget (₹) *</label><input type="number" id="reqBudget" required value="${estBudget}" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
+              <div><label class="font-semibold text-slate-300 block mb-1">Client / Event</label><input type="text" id="reqClient" value="Global FinTech Solutions Ltd." class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"></div>
             </div>
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Destination City *</label>
-              <input type="text" id="reqDest" required value="Delhi (DEL)" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
+            <div class="mt-4"><label class="font-semibold text-slate-300 block mb-1">Reason for Travel *</label><textarea id="reqJustification" required rows="3" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">Onsite presentation of enterprise cloud architecture to client leadership.</textarea></div>
+          </div>
+
+          <div class="${step === 3 ? '' : 'hidden'}">
+            <div class="p-4 rounded-2xl bg-dark-900 border border-slate-800 space-y-3">
+              <div class="flex items-center gap-3"><div class="user-avatar-ring">RV</div><div><div class="font-bold text-white">Robert Vance</div><div class="text-slate-400">Line Manager — Budget &lt; ₹25k auto-route</div></div></div>
+              <div class="flex items-center gap-3"><div class="user-avatar-ring emerald">DM</div><div><div class="font-bold text-white">David Miller</div><div class="text-slate-400">Finance Review — if budget &gt; ₹25k</div></div></div>
+              <div class="flex items-center gap-3"><div class="user-avatar-ring cyan">ER</div><div><div class="font-bold text-white">Elena Rostova</div><div class="text-slate-400">Travel Ops — booking desk after approval</div></div></div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Departure Date *</label>
-              <input type="date" id="reqDepDate" required class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Return Date</label>
-              <input type="date" id="reqRetDate" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
+          <div class="${step === 4 ? '' : 'hidden'}">
+            <div class="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 text-indigo-100 space-y-2">
+              <div class="flex justify-between"><span>Trip</span><strong id="reviewTrip">Annual Tech Summit</strong></div>
+              <div class="flex justify-between"><span>Route</span><strong id="reviewRoute">HYD ➔ DEL</strong></div>
+              <div class="flex justify-between"><span>Budget</span><strong id="reviewBudget">${formatMoney(estBudget)}</strong></div>
+              <div class="flex justify-between"><span>Approval Chain</span><strong>Manager → Finance → Travel Ops</strong></div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Estimated Budget (₹ INR) *</label>
-              <input type="number" id="reqBudget" required value="${estBudget}" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="font-semibold text-slate-300 block mb-1">Client or Event Name</label>
-              <input type="text" id="reqClient" value="Global FinTech Solutions Ltd." class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">
-            </div>
-          </div>
-
-          <div>
-            <label class="font-semibold text-slate-300 block mb-1">Business Justification *</label>
-            <textarea id="reqJustification" required rows="2" class="w-full bg-dark-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500">Onsite presentation of enterprise cloud architecture to client leadership.</textarea>
-          </div>
-
-          <div class="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-start gap-2.5">
-            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400 mt-0.5 shrink-0"></i>
-            <div class="text-[11px] text-indigo-200">
-              <strong>Automated Policy Approval Flow:</strong> Request is routed to Line Manager <strong>Robert Vance</strong>.
-            </div>
-          </div>
-
-          <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-700">
-            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 text-slate-300 font-bold transition">Cancel</button>
-            <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition shadow-lg shadow-indigo-600/30 flex items-center gap-1.5">
-              <span>Submit to Backend DB</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
-            </button>
+          <div class="flex items-center justify-between gap-3 pt-3 border-t border-slate-700">
+            <button type="button" onclick="${step > 1 ? 'requestWizardPrev()' : 'closeModal()'}" class="px-4 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 text-slate-300 font-bold transition">${step > 1 ? '← Back' : 'Cancel'}</button>
+            ${step < 4 ? `<button type="button" onclick="requestWizardNext()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition">Continue →</button>` :
+              `<button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition flex items-center gap-1.5"><i data-lucide="send" class="w-4 h-4"></i> Submit Request</button>`}
           </div>
         </form>
       </div>
@@ -2091,14 +2276,38 @@ function openNewRequestModal(prefAirline, prefFlight, prefPrice) {
   `;
 
   safeCreateIcons();
-
   const today = new Date();
   const nextWeek = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000);
   const nextWeekReturn = new Date(today.getTime() + 8 * 24 * 60 * 60 * 1000);
   const dep = document.getElementById('reqDepDate');
   const ret = document.getElementById('reqRetDate');
-  if (dep) dep.value = nextWeek.toISOString().split('T')[0];
-  if (ret) ret.value = nextWeekReturn.toISOString().split('T')[0];
+  if (dep && !dep.value) dep.value = nextWeek.toISOString().split('T')[0];
+  if (ret && !ret.value) ret.value = nextWeekReturn.toISOString().split('T')[0];
+  if (step === 4) updateRequestReviewSummary();
+}
+
+function requestWizardNext() {
+  if (STATE.requestWizardStep < 4) {
+    STATE.requestWizardStep += 1;
+    renderRequestWizardModal();
+  }
+}
+
+function requestWizardPrev() {
+  if (STATE.requestWizardStep > 1) {
+    STATE.requestWizardStep -= 1;
+    renderRequestWizardModal();
+  }
+}
+
+function updateRequestReviewSummary() {
+  const trip = document.getElementById('reqTripName');
+  const origin = document.getElementById('reqOrigin');
+  const dest = document.getElementById('reqDest');
+  const budget = document.getElementById('reqBudget');
+  if (document.getElementById('reviewTrip') && trip) document.getElementById('reviewTrip').textContent = trip.value;
+  if (document.getElementById('reviewRoute') && origin && dest) document.getElementById('reviewRoute').textContent = `${origin.value} ➔ ${dest.value}`;
+  if (document.getElementById('reviewBudget') && budget) document.getElementById('reviewBudget').textContent = formatMoney(parseFloat(budget.value) || 0);
 }
 
 async function handleCreateRequest(e) {
@@ -2169,6 +2378,17 @@ async function loadApprovalsTab() {
     </div>
 
     <!-- Pending Approvals Cards Container -->
+    <div class="approval-tabs flex flex-wrap gap-2 mb-4">
+      <button type="button" onclick="switchApprovalTab('travel')" class="approval-tab ${STATE.approvalFilter === 'travel' ? 'active' : ''}" data-filter="travel">
+        Travel Requests <span class="approval-tab-count" id="approvalCountTravel">0</span>
+      </button>
+      <button type="button" onclick="switchApprovalTab('expense')" class="approval-tab ${STATE.approvalFilter === 'expense' ? 'active' : ''}" data-filter="expense">
+        Expense Reports <span class="approval-tab-count" id="approvalCountExpense">0</span>
+      </button>
+      <button type="button" onclick="switchApprovalTab('change')" class="approval-tab ${STATE.approvalFilter === 'change' ? 'active' : ''}" data-filter="change">
+        Change Requests <span class="approval-tab-count" id="approvalCountChange">1</span>
+      </button>
+    </div>
     <div id="approvalsCardsContainer" class="space-y-4">
       <div class="p-6 text-center text-slate-400 glass-panel rounded-2xl">Loading pending approvals from database...</div>
     </div>
@@ -2178,9 +2398,93 @@ async function loadApprovalsTab() {
   await refreshApprovalsTab();
 }
 
+async function switchApprovalTab(filter) {
+  STATE.approvalFilter = filter;
+  document.querySelectorAll('.approval-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+  await refreshApprovalsTab();
+}
+
 async function refreshApprovalsTab() {
   const container = document.getElementById('approvalsCardsContainer');
   if (!container) return;
+
+  if (STATE.approvalFilter === 'expense') {
+    const expRes = await apiFetch('/api/expenses');
+    const expenses = (expRes && expRes.data) ? expRes.data : STATE.expenses;
+    STATE.expenses = expenses;
+    const pendingExpenses = expenses.filter(e => e.status === 'SUBMITTED' || e.status === 'PENDING');
+
+    const countEl = document.getElementById('approvalCountExpense');
+    if (countEl) countEl.textContent = pendingExpenses.length;
+
+    if (pendingExpenses.length === 0) {
+      container.innerHTML = `
+        <div class="glass-panel p-8 rounded-2xl border border-slate-800 text-center">
+          <i data-lucide="receipt" class="w-10 h-10 text-emerald-400 mx-auto mb-2"></i>
+          <h3 class="text-base font-bold text-white">No Pending Expense Reports</h3>
+          <p class="text-xs text-slate-400 mt-1">All expense claims have been reviewed.</p>
+        </div>
+      `;
+      safeCreateIcons();
+      return;
+    }
+
+    container.innerHTML = pendingExpenses.map(e => `
+      <div class="glass-panel approval-card neon-border-card p-6 rounded-2xl border border-emerald-500/30">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div class="flex items-start gap-4">
+            <div class="user-avatar-ring lg emerald">${(e.employeeName || 'PS').substring(0, 2).toUpperCase()}</div>
+            <div>
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-extrabold text-[10px] border border-emerald-500/40">EXPENSE REVIEW</span>
+              <h3 class="font-bold text-lg text-white mt-1">${e.title || e.reportTitle || 'Business Meal & Transport'}</h3>
+              <p class="text-xs text-slate-400">Category: <strong>${e.category || 'MEALS'}</strong> • Trip: ${e.tripReference || 'Delhi Summit'}</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-slate-400">Claim Amount</div>
+            <div class="text-2xl font-extrabold text-white">${formatMoney(e.totalAmount || e.amount || 1450)}</div>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 mt-5 pt-4 border-t border-slate-800">
+          <button onclick="navigateToTab('expenses')" class="px-4 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 text-slate-200 font-bold text-xs transition">View Details</button>
+          <button onclick="settleSpecificExpense(${e.id})" class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition flex items-center gap-2">
+            <i data-lucide="wallet" class="w-4 h-4"></i> Approve Reimbursement
+          </button>
+        </div>
+      </div>
+    `).join('');
+    safeCreateIcons();
+    return;
+  }
+
+  if (STATE.approvalFilter === 'change') {
+    container.innerHTML = `
+      <div class="glass-panel approval-card neon-border-card p-6 rounded-2xl border border-violet-500/30">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-start gap-4">
+            <div class="user-avatar-ring lg">PS</div>
+            <div>
+              <span class="px-2.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-extrabold text-[10px] border border-violet-500/40">ITINERARY CHANGE</span>
+              <h3 class="font-bold text-lg text-white mt-1">Return Flight Reschedule — DEL ➔ HYD</h3>
+              <p class="text-xs text-slate-400">Employee requested return shift from 18 Sep to 19 Sep due to client workshop extension.</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-slate-400">Fare Difference</div>
+            <div class="text-2xl font-extrabold text-amber-400">+${formatMoney(1200)}</div>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 mt-5 pt-4 border-t border-slate-800">
+          <button onclick="showToast('Change request declined.', 'warning')" class="px-4 py-2 rounded-xl bg-rose-600/20 border border-rose-500/30 text-rose-300 font-bold text-xs">Decline</button>
+          <button onclick="showToast('Itinerary change approved. Updated e-ticket issued.', 'success')" class="px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs">Approve Change</button>
+        </div>
+      </div>
+    `;
+    safeCreateIcons();
+    return;
+  }
 
   const res = await apiFetch('/api/travel-requests');
   const requests = (res && res.data) ? res.data : STATE.requests;
@@ -2199,15 +2503,18 @@ async function refreshApprovalsTab() {
   }
 
   container.innerHTML = pending.map(r => `
-    <div class="glass-panel p-6 rounded-2xl border border-amber-500/30 glow-indigo">
+    <div class="glass-panel approval-card neon-border-card p-6 rounded-2xl border border-amber-500/30">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-        <div>
+        <div class="flex items-start gap-4">
+          <div class="user-avatar-ring lg">PS</div>
+          <div>
           <div class="flex items-center gap-2">
             <span class="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-extrabold text-[10px] border border-amber-500/40">ACTION REQUIRED</span>
             <span class="font-mono text-indigo-300 font-bold text-xs">${r.requestNumber || ('TR-' + r.id)}</span>
           </div>
           <h3 class="font-bold text-lg text-white mt-1">${r.tripName || 'Annual Client Engagement'}</h3>
           <p class="text-xs text-slate-400">Employee: <strong>Priya Sharma</strong> (Engineering) • Route: <strong>${r.origin || 'HYD'} ➔ ${r.destination || 'DEL'}</strong></p>
+          </div>
         </div>
         <div class="text-right">
           <div class="text-xs text-slate-400">Estimated Budget</div>
@@ -2247,6 +2554,15 @@ async function refreshApprovalsTab() {
       </div>
     </div>
   `).join('');
+
+  const countEl = document.getElementById('approvalCountTravel');
+  if (countEl) countEl.textContent = pending.length;
+
+  const expenseCountEl = document.getElementById('approvalCountExpense');
+  if (expenseCountEl) {
+    const pendingExpenses = (STATE.expenses || []).filter(e => e.status === 'SUBMITTED' || e.status === 'PENDING');
+    expenseCountEl.textContent = pendingExpenses.length;
+  }
 
   safeCreateIcons();
 }
@@ -2389,52 +2705,49 @@ function openBoardingPassModal() {
   const modalContainer = document.getElementById('modalContainer');
   modalContainer.innerHTML = `
     <div class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-gradient-to-br from-dark-800 to-dark-900 border border-indigo-500/40 rounded-3xl w-full max-w-xl shadow-2xl p-8 relative overflow-hidden">
-        <div class="flex items-center justify-between pb-4 border-b border-slate-700">
-          <div class="flex items-center gap-2">
-            <i data-lucide="plane" class="w-6 h-6 text-indigo-400"></i>
-            <div>
-              <h3 class="font-extrabold text-lg text-white">AIR INDIA ELECTRONIC BOARDING PASS</h3>
-              <p class="text-[10px] text-indigo-300 font-mono">PNR: PNR683921 • TICKET: ETK-098-8472910</p>
+      <div class="boarding-pass-wallet w-full max-w-md shadow-2xl relative">
+        <div class="boarding-pass-card">
+          <div class="boarding-pass-header">
+            <div class="flex items-center gap-2">
+              <i data-lucide="plane" class="w-5 h-5 text-brand-300"></i>
+              <div>
+                <h3 class="font-extrabold text-sm text-white tracking-wide">AIR INDIA • BOARDING PASS</h3>
+                <p class="text-[10px] text-indigo-200 font-mono">PNR683921 • ETK-098-8472910</p>
+              </div>
             </div>
+            <button onclick="closeModal()" class="text-slate-300 hover:text-white p-1 rounded-lg">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
           </div>
-          <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
-        </div>
-
-        <div class="my-6 space-y-6">
-          <div class="flex justify-between items-center bg-dark-900/90 p-4 rounded-2xl border border-slate-800">
+          <div class="boarding-pass-route">
             <div>
-              <span class="text-3xl font-extrabold text-white">HYD</span>
-              <span class="text-xs text-slate-400 block font-medium">Hyderabad Terminal 1</span>
-              <span class="text-xs text-indigo-400 font-bold mt-1 block">07:30 AM</span>
+              <span class="boarding-airport-code">HYD</span>
+              <span class="boarding-airport-meta">Terminal 1 • 07:30</span>
             </div>
-            <div class="text-center px-4">
-              <i data-lucide="plane" class="w-6 h-6 text-indigo-400 mx-auto"></i>
-              <span class="text-[10px] font-mono text-slate-500">AI-839 (2h 15m)</span>
+            <div class="boarding-route-plane">
+              <i data-lucide="plane" class="w-5 h-5"></i>
+              <span>AI-839</span>
             </div>
             <div class="text-right">
-              <span class="text-3xl font-extrabold text-white">DEL</span>
-              <span class="text-xs text-slate-400 block font-medium">Delhi Terminal 3</span>
-              <span class="text-xs text-indigo-400 font-bold mt-1 block">09:45 AM</span>
+              <span class="boarding-airport-code">DEL</span>
+              <span class="boarding-airport-meta">Terminal 3 • 09:45</span>
             </div>
           </div>
-
-          <div class="grid grid-cols-4 gap-3 text-center text-xs bg-dark-900/60 p-3.5 rounded-xl border border-slate-800">
-            <div><span class="text-slate-500 block">Passenger</span> <strong class="text-white font-bold">P. Sharma</strong></div>
-            <div><span class="text-slate-500 block">Gate</span> <strong class="text-emerald-400 font-bold">B14</strong></div>
-            <div><span class="text-slate-500 block">Seat</span> <strong class="text-indigo-400 font-bold">14A</strong></div>
-            <div><span class="text-slate-500 block">Class</span> <strong class="text-white font-bold">Economy</strong></div>
+          <div class="boarding-pass-grid">
+            <div><span class="label">Passenger</span><strong>Priya Sharma</strong></div>
+            <div><span class="label">Seat</span><strong class="text-indigo-300">14A</strong></div>
+            <div><span class="label">Gate</span><strong class="text-emerald-400">B14</strong></div>
+            <div><span class="label">Class</span><strong>Economy</strong></div>
+          </div>
+          <div class="boarding-pass-barcode">
+            <div class="barcode-lines"></div>
+            <span class="text-[10px] text-slate-400 font-mono">Scan at security • Corporate approved</span>
           </div>
         </div>
-
-        <div class="flex items-center justify-between pt-4 border-t border-slate-700">
-          <div class="text-[10px] text-slate-400">
-            <i data-lucide="shield-check" class="w-3.5 h-3.5 inline text-emerald-400"></i> Corporate Policy Approved • Verified
-          </div>
+        <div class="boarding-pass-actions">
+          <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-dark-800 border border-slate-700 text-slate-300 font-bold text-xs">Close</button>
           <button onclick="goToFlowStep(5); closeModal();" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition flex items-center gap-1.5">
-            <span>Proceed to Step 5: Duty of Care</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            Duty of Care <i data-lucide="arrow-right" class="w-4 h-4"></i>
           </button>
         </div>
       </div>
@@ -3237,6 +3550,34 @@ function launchModule(moduleId) {
   showToast(`Opened ${moduleId.toUpperCase()} module`);
 }
 
+function getNotificationStyle(type) {
+  const styles = {
+    APPROVED: { icon: 'check-circle-2', cls: 'notif-approved' },
+    BOOKING: { icon: 'ticket', cls: 'notif-booking' },
+    ALERT: { icon: 'shield-alert', cls: 'notif-alert' },
+    EXPENSE: { icon: 'receipt', cls: 'notif-expense' }
+  };
+  return styles[type] || { icon: 'bell', cls: 'notif-default' };
+}
+
+function handleNotificationClick(id) {
+  const n = STATE.notifications.find(item => item.id === id);
+  toggleNotificationsModal();
+  if (!n) {
+    navigateToTab('dashboard');
+    return;
+  }
+  if ((n.type || '').includes('BOOKING') || (n.title || '').toLowerCase().includes('booking')) {
+    navigateToTab('itinerary');
+  } else if ((n.type || '').includes('APPROVED') || (n.title || '').toLowerCase().includes('approved')) {
+    navigateToTab('approvals');
+  } else if ((n.title || '').toLowerCase().includes('expense')) {
+    navigateToTab('expenses');
+  } else {
+    navigateToTab('dashboard');
+  }
+}
+
 async function toggleNotificationsModal() {
   const modal = document.getElementById('notifModal');
   const container = document.getElementById('notifListContainer');
@@ -3250,15 +3591,23 @@ async function toggleNotificationsModal() {
         updateNotificationBadge();
       }
     }
-    container.innerHTML = STATE.notifications.length ? STATE.notifications.map(n => `
-      <div class="p-3 rounded-xl bg-dark-900 border border-slate-800 text-xs stat-card-3d">
-        <div class="flex items-center justify-between font-bold text-white">
-          <span>${n.title}</span>
-          <span class="text-[10px] text-slate-500">${n.time}</span>
+    container.innerHTML = STATE.notifications.length ? STATE.notifications.map(n => {
+      const style = getNotificationStyle(n.type);
+      return `
+      <button type="button" onclick="handleNotificationClick(${n.id})" class="notif-item ${style.cls} w-full text-left p-3 rounded-xl bg-dark-900 border border-slate-800 text-xs stat-card-3d hover:border-brand-500/40 transition">
+        <div class="flex items-start gap-3">
+          <div class="notif-icon-wrap"><i data-lucide="${style.icon}" class="w-4 h-4"></i></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between font-bold text-white gap-2">
+              <span class="truncate">${n.title}</span>
+              <span class="text-[10px] text-slate-500 shrink-0">${n.time}</span>
+            </div>
+            <p class="text-slate-400 text-[11px] mt-1 line-clamp-2">${n.desc}</p>
+          </div>
         </div>
-        <p class="text-slate-400 text-[11px] mt-1">${n.desc}</p>
-      </div>
-    `).join('') : '<div class="text-center text-slate-400 text-xs py-8">No notifications yet</div>';
+      </button>
+    `;
+    }).join('') : '<div class="text-center text-slate-400 text-xs py-8">No notifications yet</div>';
     modal.classList.remove('hidden');
   } else {
     modal.classList.add('hidden');
@@ -3277,11 +3626,20 @@ async function toggleLiveChatDrawer() {
   safeCreateIcons();
 }
 
+async function switchChatChannel(channel) {
+  STATE.chatChannel = channel;
+  STATE.chatConversation = null;
+  document.querySelectorAll('.chat-channel-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.channel === channel);
+  });
+  await loadChatConversation();
+}
+
 async function loadChatConversation() {
   const box = document.getElementById('chatMessagesBox');
   if (!box) return;
 
-  const convRes = await apiFetch('/api/chat/conversation?type=SUPPORT');
+  const convRes = await apiFetch(`/api/chat/conversation?type=${encodeURIComponent(STATE.chatChannel || 'SUPPORT')}`);
   if (!convRes || !convRes.data) return;
 
   STATE.chatConversation = convRes.data;
@@ -3354,14 +3712,21 @@ function openAiModal() {
   navigateToTab('ai-assistant');
 }
 
-function showToast(message) {
+function showToast(message, type = 'success') {
+  const styles = {
+    success: { bg: 'from-indigo-900 to-slate-900', border: 'border-indigo-500/50', icon: 'check-circle-2', iconColor: 'text-emerald-400' },
+    warning: { bg: 'from-amber-950 to-slate-900', border: 'border-amber-500/50', icon: 'alert-triangle', iconColor: 'text-amber-400' },
+    info: { bg: 'from-sky-950 to-slate-900', border: 'border-sky-500/50', icon: 'info', iconColor: 'text-sky-400' }
+  };
+  const s = styles[type] || styles.success;
   const toast = document.createElement('div');
-  toast.className = 'fixed bottom-6 left-6 z-50 px-4 py-3 rounded-2xl bg-gradient-to-r from-indigo-900 to-slate-900 border border-indigo-500/50 text-white font-semibold text-xs shadow-2xl flex items-center gap-2 animate-fade-in';
-  toast.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> <span>${message}</span>`;
+  toast.className = `toast-slide-in fixed bottom-6 left-6 z-[60] px-4 py-3 rounded-2xl bg-gradient-to-r ${s.bg} border ${s.border} text-white font-semibold text-xs shadow-2xl flex items-center gap-2 max-w-sm`;
+  toast.innerHTML = `<i data-lucide="${s.icon}" class="w-4 h-4 ${s.iconColor} shrink-0"></i> <span>${message}</span>`;
   document.body.appendChild(toast);
   safeCreateIcons();
   setTimeout(() => {
-    toast.remove();
+    toast.classList.add('toast-slide-out');
+    setTimeout(() => toast.remove(), 300);
   }, 4000);
 }
 
@@ -3395,7 +3760,17 @@ window.toggleNotificationsModal = toggleNotificationsModal;
 window.toggleLiveChatDrawer = toggleLiveChatDrawer;
 window.sendChatMessage = sendChatMessage;
 window.dismissSplash = dismissSplash;
-window.releaseFund = releaseFund;
+window.requestWizardNext = requestWizardNext;
+window.requestWizardPrev = requestWizardPrev;
+window.switchChatChannel = switchChatChannel;
+window.switchApprovalTab = switchApprovalTab;
+window.toggleFabMenu = toggleFabMenu;
+window.runFabAction = runFabAction;
+window.openProfileSheet = openProfileSheet;
+window.closeProfileSheet = closeProfileSheet;
+window.handleMobileProfileTap = handleMobileProfileTap;
+window.handleNotificationClick = handleNotificationClick;
+window.renderRequestWizardModal = renderRequestWizardModal;
 window.openAiModal = openAiModal;
 window.closeModal = closeModal;
 window.openNewRequestModal = openNewRequestModal;
